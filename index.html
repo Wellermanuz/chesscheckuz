@@ -264,18 +264,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
 }
 .ai-board-wrap{
   flex:1;display:flex;align-items:center;justify-content:center;
-  padding:8px 0;
+  padding:0;overflow:hidden;
 }
 #ai-board{
   display:grid;grid-template-columns:repeat(8,1fr);
-  width:min(calc(100vw - 0px),430px);
-  max-width:430px;
-  aspect-ratio:1;
-  border:3px solid var(--border);
+  width:100vw;max-width:430px;
+  height:100vw;max-height:430px;
+  border:none;
 }
 .ai-sq{
-  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-  font-size:clamp(20px,6vw,36px);cursor:pointer;
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(18px,5.5vw,32px);cursor:pointer;
   transition:background .1s;position:relative;
 }
 .ai-sq.selected{background:#f59e0b !important;}
@@ -380,7 +379,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
       <div class="mdesc">Daily tactics &amp; brain training</div>
       <div class="mbadge new">NEW</div>
     </div>
-    <div class="mcard ai" onclick="showMatchModal()">
+    <div class="mcard ai" onclick="startVsAI()">
       <div class="micon">🤖</div><div class="mname">vs AI</div>
       <div class="mdesc">Practice against computer</div>
       <div class="mbadge ai">AI</div>
