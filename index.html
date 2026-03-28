@@ -280,7 +280,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
       <div class="mdesc">Daily tactics &amp; brain training</div>
       <div class="mbadge new">NEW</div>
     </div>
-    <div class="mcard ai" onclick="showMatchModal()">
+    <div class="mcard ai" onclick="startVsAI()">
       <div class="micon">🤖</div><div class="mname">vs AI</div>
       <div class="mdesc">Practice against computer</div>
       <div class="mbadge ai">AI</div>
@@ -685,6 +685,49 @@ function showMatchModal() {
 function closeModal() {
     document.getElementById('match-modal').classList.remove('open');
     document.getElementById('m-icon').style.animation = "spin 2s linear infinite";
+}
+// AI bilan o'yinni darhol boshlovchi maxsus funksiya
+function startVsAI() {
+    // 1. Modal oynani ochamiz
+    const modal = document.getElementById('match-modal');
+    if (!modal) return;
+    modal.classList.add('open');
+
+    // 2. Sarlavhani "Siz vs AI" ga o'zgartiramiz
+    const titleElements = modal.querySelectorAll('.mtitle');
+    if(titleElements.length > 0) titleElements[0].innerText = "Siz vs Kompyuter (AI)";
+
+    // 3. Aylanadigan "kutish" belgisini yashiramiz
+    const icon = document.getElementById('m-icon');
+    if (icon) {
+        icon.style.display = 'none';
+        
+        // Ikonkadan keyingi matnni "O'yin boshlandi" ga almashtiramiz
+        const textDiv = icon.nextElementSibling;
+        if (textDiv) {
+            textDiv.innerHTML = '<strong style="color:var(--green);font-size:18px">O\'yin boshlandi!</strong><br><span style="font-size:13px;color:var(--muted)">Siz oqlardasiz. Birinchi yurishni qiling.</span>';
+        }
+    }
+
+    // 4. AI bilan o'yinda "Create Room" kerak emas, shuning uchun uni yashiramiz
+    const buttons = modal.querySelectorAll('button');
+    buttons.forEach(btn => {
+        if (btn.innerText.includes('Create Room')) {
+            btn.style.display = 'none';
+        }
+        if (btn.innerText.includes('Cancel')) {
+            btn.innerText = "Chiqish";
+        }
+    });
+
+    // 5. O'yin motorini noldan yuklab, doskani chizamiz
+    if (typeof Chess !== 'undefined') {
+        game = new Chess();
+        selectedSq = null;
+        renderBoard();
+    } else {
+        alert("Shaxmat kutubxonasi yuklanmadi. Iltimos, sahifani yangilang.");
+    }
 }
 
 // Ilovani boshlash
