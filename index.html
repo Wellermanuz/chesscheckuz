@@ -6,6 +6,7 @@
 <title>Chess & Checkers Online</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <style>
 :root {
   --bg:#080d18;--s1:#0e1628;--s2:#131f35;--s3:#1a2a45;--s4:#1f3354;
@@ -587,50 +588,94 @@ function setCT(btn){
   btn.classList.add('active');
 }
 
-function showMatchModal(){
-  const chess=curGame==='chess';
-  document.getElementById('m-game').textContent=chess?'Chess':'Checkers';
-  document.getElementById('m-icon').textContent=chess?'♟':'⬛';
-  const wrap=document.getElementById('board-wrap');
-  const chessBoard=[
-    ['♜','♞','♝','♛','♚','♝','♞','♜'],
-    ['♟','♟','♟','♟','♟','♟','♟','♟'],
-    ['','','','','','','',''],
-    ['','','','','','','',''],
-    ['','','','','','','',''],
-    ['','','','','','','',''],
-    ['♙','♙','♙','♙','♙','♙','♙','♙'],
-    ['♖','♘','♗','♕','♔','♗','♘','♖'],
-  ];
-  const checkersBoard=[
-    ['','⚫','','⚫','','⚫','','⚫'],
-    ['⚫','','⚫','','⚫','','⚫',''],
-    ['','⚫','','⚫','','⚫','','⚫'],
-    ['','','','','','','',''],
-    ['','','','','','','',''],
-    ['⚪','','⚪','','⚪','','⚪',''],
-    ['','⚪','','⚪','','⚪','','⚪'],
-    ['⚪','','⚪','','⚪','','⚪',''],
-  ];
-  const board=chess?chessBoard:checkersBoard;
-  wrap.innerHTML='';
-  const g=document.createElement('div');
-  g.style.cssText='display:grid;grid-template-columns:repeat(8,1fr);width:188px;';
-  board.forEach((row,r)=>row.forEach((cell,c)=>{
-    const sq=document.createElement('div');
-    const light=(r+c)%2===0;
-    sq.style.cssText=`width:23.5px;height:23.5px;display:flex;align-items:center;justify-content:center;font-size:12px;background:${light?(chess?'#e8d5b7':'#f0d9b5'):(chess?'#7c5c3a':'#b58863')};`;
-    sq.textContent=cell;
-    g.appendChild(sq);
-  }));
-  wrap.appendChild(g);
-  document.getElementById('match-modal').classList.add('open');
+// --- SHAXMAT ENGINE VA DINAMIK BOSHQARUV ---
+
+// 1. Shaxmat mantiqi (Engine) obyektini yaratish
+const game = new Chess();
+let selectedSq = null;
+
+// 2. Taxtani har safar yangidan chizuvchi funksiya
+function renderBoard() {
+  const wrap = document.getElementById('board-wrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = ''; // Eski statik taxtani tozalash
+  const board = game.board(); // Engine'dan joriy holatni olish
+
+  const boardEl = document.createElement('div');
+  boardEl.style.cssText = 'display:grid;grid-template-columns:repeat(8,1fr);width:188px;border:2px solid #1a3050;margin:0 auto;';
+
+  board.forEach((row, rIdx) => {
+    row.forEach((cell, cIdx) => {
+      const sq = document.createElement('div');
+      const coords = String.fromCharCode(94 + 3 + cIdx) + (8 - rIdx); // Masalan: 'e2'
+      const isLight = (rIdx + cIdx) % 2 === 0;
+
+      sq.style.cssText = `width:23.5px;height:23.5px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;`;
+      
+      // Sizning dizayningizdagi ranglar
+      sq.style.backgroundColor = isLight ? '#e8d5b7' : '#7c5c3a';
+
+      // Tanlangan katakni ajratib ko'rsatish
+      if (selectedSq === coords) sq.style.backgroundColor = '#f59e0b';
+
+      if (cell) {
+        // Donacha belgilari
+        const pieces = {
+          'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
+          'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔'
+        };
+        // Oqlar uchun katta harf, qoralar uchun kichik harf
+        sq.textContent = pieces[cell.color === 'w' ? cell.type.toUpperCase() : cell.type];
+        sq.style.color = cell.color === 'w' ? '#fff' : '#000';
+      }
+
+      // Katak bosilganda yurish mantiqi
+      sq.onclick = () => {
+        if (selectedSq === null) {
+          // Donachani tanlash (faqat o'z navbati bo'lsa)
+          if (cell && cell.color === game.turn()) {
+            selectedSq = coords;
+            renderBoard();
+          }
+        } else {
+          // Tanlangan donachani yangi joyga surish
+          const move = game.move({ from: selectedSq, to: coords, promotion: 'q' });
+          selectedSq = null;
+          renderBoard();
+          
+          if (move === null) {
+            console.log("Xato yurish!"); 
+          }
+        }
+      };
+      boardEl.appendChild(sq);
+    });
+  });
+  wrap.appendChild(boardEl);
 }
 
-function closeModal(){
+// 3. Modalni ochish funksiyasini yangilaymiz
+function showMatchModal() {
+  const chess = curGame === 'chess';
+  document.getElementById('m-game').textContent = chess ? 'Chess' : 'Checkers';
+  document.getElementById('m-icon').textContent = chess ? '♟' : '⬛';
+  
+  document.getElementById('match-modal').classList.add('open');
+  
+  if (chess) {
+    renderBoard(); // Agar shaxmat tanlangan bo'lsa, engine'ni ishga tushirish
+  } else {
+    // Shashka mantiqi hozircha statik qoladi yoki alohida engine qo'shiladi
+    document.getElementById('board-wrap').innerHTML = '<p style="font-size:12px; padding:10px;">Shashka mantiqi tez kunda qo\'shiladi...</p>';
+  }
+}
+
+function closeModal() {
   document.getElementById('match-modal').classList.remove('open');
 }
 
+// O'yinni boshlash sahifasini ko'rsatish
 showScreen('play');
 </script>
 </body>
