@@ -243,8 +243,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
     <div class="pinfo">
       <div class="pname">Player_One</div>
       <div class="pstats">
-        <div class="spill">🏆 <span>347 wins</span></div>
-        <div class="spill">🎯 <span>1,240 pts</span></div>
+        <div class="spill">🏆 <span id="user-wins-main">0 wins</span></div>
+        <div class="spill">🎯 <span id="user-pts-main">0 pts</span></div>
       </div>
     </div>
     <div class="ring-wrap">
@@ -327,7 +327,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
 <!-- ══ SHOP ══ -->
 <div id="sc-shop" class="screen">
   <div class="shop-bal">
-    <div><div class="sb-lbl">Your Points</div><div class="sb-val">1,240 🎯</div></div>
+    <div class="sb-val"><span id="user-pts-shop">0</span> 🎯</div>
     <span style="font-size:38px">🏪</span>
   </div>
   <div class="slabel">Items</div>
@@ -550,7 +550,7 @@ dynamicStyles.innerHTML = `
   .fs-sq { display: flex; align-items: center; justify-content: center; font-size: 9.5vw; line-height: 1; cursor: pointer; position: relative; }
   @media (min-width: 430px) { .fs-sq { font-size: 38px; } }
 
-  /* OXIRGI YURISH IZI (Yorqin va aniq) */
+  /* OXIRGI YURISH IZI */
   .last-move { position: relative; }
   .last-move::before { content: ''; position: absolute; inset: 0; background-color: rgba(234, 179, 8, 0.5) !important; z-index: 1; }
 
@@ -589,12 +589,11 @@ dynamicStyles.innerHTML = `
 `;
 document.head.appendChild(dynamicStyles);
 
-// --- 0. OVOZ EFFEKTLARI (Telegram WebApp moslashtirilgan) ---
+// --- 0. OVOZ EFFEKTLARI ---
 const sndMove = new Audio('https://lichess1.org/assets/sound/standard/Move.ogg');
 const sndCapture = new Audio('https://lichess1.org/assets/sound/standard/Capture.ogg');
 const sndEnd = new Audio('https://lichess1.org/assets/sound/standard/GenericNotify.ogg');
 
-// Ovozni telefonda majburan qulfdan chiqarish (Unlock)
 function unlockAudio() {
     try {
         let p1 = sndMove.play(); if (p1 !== undefined) p1.then(() => { sndMove.pause(); sndMove.currentTime = 0; }).catch(() => {});
@@ -611,7 +610,7 @@ function playSound(type) {
     } catch (e) {}
 }
 
-// --- 1. ASOSIY NAVIGATSIYA ---
+// --- 1. ASOSIY NAVIGATSIYA VA XOTIRA ---
 const tg = window.Telegram.WebApp;
 tg.expand();
 const user = tg.initDataUnsafe.user;
@@ -620,7 +619,45 @@ if (user && document.querySelector('.pname')) document.querySelector('.pname').i
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
 let aiDifficulty = null; 
-let globalLastMove = null; // Yurish izini saqlovchi o'zgaruvchi
+let globalLastMove = null; 
+
+// --- BALLAR VA G'ALABALAR XOTIRASI ---
+let userPts = 0;
+let userWins = 0;
+
+let savedPts = localStorage.getItem('chess_checkers_pts');
+let savedWins = localStorage.getItem('chess_checkers_wins');
+
+if (savedPts === null || savedWins === null) {
+    // Agar birinchi marta kirayotgan bo'lsa
+    userPts = 0;
+    userWins = 0;
+    localStorage.setItem('chess_checkers_pts', userPts);
+    localStorage.setItem('chess_checkers_wins', userWins);
+    
+    setTimeout(() => {
+        if (tg && tg.showAlert) {
+            tg.showAlert("⚡ Chess & Checkers o'yiniga xush kelibsiz!\n\nAI ni yengib, ball va g'alabalar sonini oshiring!");
+        } else {
+            alert("⚡ Chess & Checkers o'yiniga xush kelibsiz!");
+        }
+    }, 500);
+} else {
+    // Eski o'yinchi bo'lsa
+    userPts = parseInt(savedPts);
+    userWins = parseInt(savedWins);
+}
+
+// Ekranda Ballar va G'alabalarni yangilash
+function updateStatsUI() {
+    const ptsMain = document.getElementById('user-pts-main');
+    const ptsShop = document.getElementById('user-pts-shop');
+    const winsMain = document.getElementById('user-wins-main');
+    
+    if (ptsMain) ptsMain.innerText = userPts + " pts";
+    if (ptsShop) ptsShop.innerText = userPts; 
+    if (winsMain) winsMain.innerText = userWins + " wins";
+}
 
 function showScreen(n) {
     SCREENS.forEach(s => {
@@ -648,7 +685,7 @@ function selGame(g) {
 let chessGame;
 try { chessGame = new Chess(); } catch (e) { console.error("Chess.js yuklanmadi"); }
 let chessSelectedSq = null;
-let isAITurn = false; // Yurish vaqtida bloklash uchun
+let isAITurn = false; 
 
 const chessPieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
 function evalChess() {
@@ -687,12 +724,11 @@ function renderChessBoard() {
             
             sq.style.backgroundColor = (rIdx + cIdx) % 2 === 0 ? '#e8d5b7' : '#7c5c3a';
 
-            // OXIRGI YURISH IZI (Sariq qoplama)
             if (globalLastMove && (globalLastMove.from === coords || globalLastMove.to === coords)) {
                 sq.classList.add('last-move');
             }
 
-            if (chessSelectedSq === coords) sq.style.backgroundColor = '#f59e0b'; // Tanlangan donacha
+            if (chessSelectedSq === coords) sq.style.backgroundColor = '#f59e0b'; 
 
             if (cell) {
                 const pieces = { 'p':'♟', 'r':'♜', 'n':'♞', 'b':'♝', 'q':'♛', 'k':'♚', 'P':'♙', 'R':'♖', 'N':'♘', 'B':'♗', 'Q':'♕', 'K':'♔' };
@@ -711,7 +747,7 @@ function renderChessBoard() {
             }
 
             sq.onclick = () => {
-                if (chessGame.game_over() || isAITurn) return; // O'yin tugasa yoki AI navbati bo'lsa bloklash
+                if (chessGame.game_over() || isAITurn) return; 
                 
                 if (!chessSelectedSq) {
                     if (cell && cell.color === 'w') { chessSelectedSq = coords; renderChessBoard(); }
@@ -725,8 +761,8 @@ function renderChessBoard() {
                         checkGameOver(chessGame, 'chess');
                         
                         if (!chessGame.game_over()) {
-                            isAITurn = true; // AIning navbati boshlandi
-                            setTimeout(makeChessAIMove, 1000); // 1 SONIYA (1000ms) KUTISH
+                            isAITurn = true; 
+                            setTimeout(makeChessAIMove, 1000); 
                         }
                     } else {
                         chessSelectedSq = (cell && cell.color === 'w') ? coords : null;
@@ -759,7 +795,7 @@ function makeChessAIMove() {
     let executedMove = chessGame.move(bestMove.san);
     playSound(executedMove.captured ? 'capture' : 'move'); 
     globalLastMove = { from: executedMove.from, to: executedMove.to }; 
-    isAITurn = false; // Sizning navbatingiz
+    isAITurn = false; 
     renderChessBoard(); 
     checkGameOver(chessGame, 'chess');
 }
@@ -888,9 +924,10 @@ function renderCheckersBoard() {
             (function(r, c) {
                 const sq = document.createElement('div');
                 sq.className = 'fs-sq';
-                sq.style.backgroundColor = (r + c) % 2 === 0 ? '#e8d5b7' : '#7c5c3a';
+                
+                let isLight = (r + c) % 2 === 0;
+                sq.style.backgroundColor = isLight ? '#e8d5b7' : '#7c5c3a';
 
-                // OXIRGI YURISH IZI
                 if (globalLastMove && ((globalLastMove.from.r === r && globalLastMove.from.c === c) || (globalLastMove.to.r === r && globalLastMove.to.c === c))) {
                     sq.classList.add('last-move');
                 }
@@ -929,8 +966,8 @@ function renderCheckersBoard() {
                             checkGameOver(chkGame, 'checkers');
                             
                             if (!chkGame.isGameOver() && chkGame.turn === -1) {
-                                isAITurn = true; // AI ga navbat berdik
-                                setTimeout(makeChkAIMove, 1000); // 1 SONIYA (1000ms) KUTISH
+                                isAITurn = true; 
+                                setTimeout(makeChkAIMove, 1000); 
                             }
                         } else {
                             if (!chkGame.multiJumpSq && pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) chkSelectedSq = {r, c}; 
@@ -969,33 +1006,55 @@ function makeChkAIMove() {
     checkGameOver(chkGame, 'checkers');
     
     if (chkGame.turn === -1 && !chkGame.isGameOver()) {
-        setTimeout(makeChkAIMove, 800); // Zanjirli urish davom etsa yana kutadi
+        setTimeout(makeChkAIMove, 800); 
     } else {
-        isAITurn = false; // AI yurishni tugatdi, endi o'yinchi yura oladi
+        isAITurn = false; 
     }
 }
 
 // ==========================================
-// 4. O'YIN BOSHQARUVI VA QIYINCHILIK TANLASH
+// 4. O'YIN BOSHQARUVI, BALLAR VA QIYINCHILIK
 // ==========================================
 function checkGameOver(gameObj, type) {
     let isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
     if (!isOver) return;
 
-    playSound('end'); // Tugash ovozi
+    playSound('end'); 
 
     let title = "", sub = "", color = "";
+    let isWin = false;
+    let isLose = false;
+
     if (type === 'chess') {
         if (gameObj.in_checkmate()) {
-            if (gameObj.turn() === 'b') { title = "🏆 Checkmate!"; sub = "Siz g'alaba qozondingiz!"; color = "var(--gold)"; } 
-            else { title = "💀 Checkmate!"; sub = "Kompyuter g'alaba qozondi."; color = "var(--red)"; }
+            if (gameObj.turn() === 'b') { 
+                title = "🏆 Checkmate!"; sub = "Siz g'alaba qozondingiz! +20 pts"; color = "var(--gold)"; isWin = true;
+            } else { 
+                title = "💀 Checkmate!"; sub = "Kompyuter g'alaba qozondi. -10 pts"; color = "var(--red)"; isLose = true;
+            }
         } else { title = "🤝 Draw"; sub = "O'yin durang bilan yakunlandi."; color = "#60a5fa"; }
     } else {
         let pMoves = gameObj.getMoves(1).length, aiMoves = gameObj.getMoves(-1).length;
-        if (pMoves === 0) { title = "💀 Yutqazdingiz!"; sub = "Sizda yurish qolmadi yoki donangiz tugadi."; color = "var(--red)"; }
-        else if (aiMoves === 0) { title = "🏆 G'alaba!"; sub = "Siz AI ni yengdingiz!"; color = "var(--gold)"; }
-        else { title = "🤝 Durang"; sub = "O'yin tugadi."; color = "#60a5fa"; }
+        if (pMoves === 0) { 
+            title = "💀 Yutqazdingiz!"; sub = "Yurish qolmadi yoki donangiz tugadi. -10 pts"; color = "var(--red)"; isLose = true;
+        } else if (aiMoves === 0) { 
+            title = "🏆 G'alaba!"; sub = "Siz AI ni yengdingiz! +20 pts"; color = "var(--gold)"; isWin = true;
+        } else { title = "🤝 Durang"; sub = "O'yin tugadi."; color = "#60a5fa"; }
     }
+
+    // BALLAR VA G'ALABALARNI HISOBLASH
+    if (isWin) {
+        userPts += 20; 
+        userWins += 1; // G'alabaga +1 qo'shildi!
+    } else if (isLose) {
+        userPts -= 10; 
+        if (userPts < 0) userPts = 0; 
+    }
+    
+    // Xotiraga saqlash va Ekranni yangilash
+    localStorage.setItem('chess_checkers_pts', userPts);
+    localStorage.setItem('chess_checkers_wins', userWins);
+    updateStatsUI();
 
     const wrap = document.getElementById('board-wrap');
     const overlay = document.createElement('div'); overlay.className = 'end-overlay';
@@ -1015,7 +1074,7 @@ window.selectDifficulty = function(level) {
 window.finalStartGame = function() {
     if (!aiDifficulty) return; 
     
-    unlockAudio(); // BRAUZER OVOZINI QULFDAN CHIQARISH (Juda muhim!)
+    unlockAudio(); 
 
     globalLastMove = null; 
     isAITurn = false;
@@ -1082,6 +1141,8 @@ function closeModal() {
     }
 }
 
+// Dastur ishga tushganda UI ni yangilash
+updateStatsUI();
 showScreen('play');
 </script>
 </body>
