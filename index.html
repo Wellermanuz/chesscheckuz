@@ -538,7 +538,33 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
 </div>
 
 <script>
-// --- 1. ASOSIY NAVIGATSIYA VA TELEGRAM (O'ZGARTIRILMADI) ---
+// --- Dinamik Fullscreen va UI elementlari uchun CSS ---
+const dynamicStyles = document.createElement('style');
+dynamicStyles.innerHTML = `
+  /* Modalni to'liq ekranga yoyish */
+  .fs-modal .modal { height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; display: flex; flex-direction: column; }
+  .fs-modal .modal > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 10px !important; gap: 20px !important; }
+  
+  /* Shaxmat doskasi o'lchamlari */
+  .fs-board-wrap { width: 100%; max-width: 430px; margin: 0 auto; aspect-ratio: 1; position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .fs-board { display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; height: 100%; }
+  .fs-sq { display: flex; align-items: center; justify-content: center; font-size: 8vw; cursor: pointer; position: relative; }
+  @media (min-width: 430px) { .fs-sq { font-size: 34px; } }
+  
+  /* Yurish ko'rsatkichlari (Yashil nuqtalar) */
+  .move-dot { position: absolute; width: 25%; height: 25%; background: rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
+  .move-cap { position: absolute; width: 85%; height: 85%; border: 4px solid rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
+  
+  /* O'yin tugagandagi Overlay */
+  .end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; backdrop-filter: blur(3px); }
+  .end-title { font-size: 26px; margin-bottom: 8px; font-weight: 900; }
+  .end-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
+  .end-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 12px 24px; border-radius: 12px; color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+`;
+document.head.appendChild(dynamicStyles);
+
+// --- 1. ASOSIY NAVIGATSIYA VA TELEGRAM ---
 const tg = window.Telegram.WebApp;
 tg.expand();
 
@@ -549,14 +575,9 @@ if (user && document.querySelector('.pname')) {
 
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
-let game; // O'yin obyekti
+let game;
 
-// Kutubxona yuklanganini tekshirish va o'yinni boshlash
-try {
-    game = new Chess();
-} catch (e) {
-    console.error("Chess library yuklanishda xato!");
-}
+try { game = new Chess(); } catch (e) { console.error("Chess.js yuklanmadi"); }
 
 function showScreen(n) {
     SCREENS.forEach(s => {
@@ -572,26 +593,23 @@ function showScreen(n) {
 }
 
 function goBack() { showScreen('play'); }
-
 function selGame(g) {
     curGame = g;
     document.getElementById('gt-chess').classList.toggle('active', g === 'chess');
     document.getElementById('gt-check').classList.toggle('active', g === 'checkers');
 }
-
 function setSTab(btn, id) {
     document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tcont').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('st-' + id).classList.add('active');
 }
-
 function setCT(btn) {
     document.querySelectorAll('.coll-ttab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 }
 
-// --- 2. SHAXMAT ENGINE VA AI MANTIQI (TO'G'RILANGAN) ---
+// --- 2. SHAXMAT ENGINE VA FULLSCREEN AI ---
 let selectedSq = null;
 
 function renderBoard() {
@@ -599,9 +617,16 @@ function renderBoard() {
     if (!wrap || !game) return;
 
     wrap.innerHTML = '';
+    wrap.className = 'fs-board-wrap'; // Katta doska klassini qo'shamiz
+    wrap.style.cssText = ''; // Eski statik stillarni tozalaymiz
+
     const board = game.board();
     const boardEl = document.createElement('div');
-    boardEl.style.cssText = 'display:grid;grid-template-columns:repeat(8,1fr);width:188px;border:2px solid #1a3050;margin:0 auto;background:#1a3050;';
+    boardEl.className = 'fs-board';
+
+    // Qayerga yurish mumkinligini aniqlash
+    const validMoves = selectedSq ? game.moves({ square: selectedSq, verbose: true }) : [];
+    const validTargets = validMoves.map(m => m.to);
 
     board.forEach((row, rIdx) => {
         row.forEach((cell, cIdx) => {
@@ -609,24 +634,35 @@ function renderBoard() {
             const coords = String.fromCharCode(97 + cIdx) + (8 - rIdx);
             const isLight = (rIdx + cIdx) % 2 === 0;
 
-            sq.style.cssText = `width:23.5px;height:23.5px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;`;
+            sq.className = 'fs-sq';
             sq.style.backgroundColor = isLight ? '#e8d5b7' : '#7c5c3a';
 
+            // Tanlangan donacha foni
             if (selectedSq === coords) sq.style.backgroundColor = '#f59e0b';
 
+            // Donachani chizish
             if (cell) {
                 const pieces = {
                     'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
                     'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔'
                 };
-                sq.textContent = pieces[cell.color === 'w' ? cell.type.toUpperCase() : cell.type];
-                // Donachalar yaxshi ko'rinishi uchun ranglar o'zgartirildi
-                sq.style.color = cell.color === 'w' ? '#ffffff' : '#000000';
-                if(cell.color === 'w') sq.style.textShadow = "0 0 2px #000"; 
+                const pieceEl = document.createElement('span');
+                pieceEl.textContent = pieces[cell.color === 'w' ? cell.type.toUpperCase() : cell.type];
+                pieceEl.style.color = cell.color === 'w' ? '#ffffff' : '#000000';
+                if(cell.color === 'w') pieceEl.style.textShadow = "0 2px 4px rgba(0,0,0,0.5)";
+                pieceEl.style.zIndex = "3";
+                sq.appendChild(pieceEl);
+            }
+
+            // Yashil nuqtalarni (yurish ko'rsatkichlarini) qo'shish
+            if (validTargets.includes(coords)) {
+                const indicator = document.createElement('div');
+                indicator.className = cell ? 'move-cap' : 'move-dot';
+                sq.appendChild(indicator);
             }
 
             sq.onclick = () => {
-                if (game.game_over() || game.turn() === 'b') return;
+                if (game.game_over() || game.turn() === 'b') return; // AI o'ylayotganda bloklash
 
                 if (selectedSq === null) {
                     if (cell && cell.color === 'w') {
@@ -634,17 +670,25 @@ function renderBoard() {
                         renderBoard();
                     }
                 } else {
-                    const move = game.move({ from: selectedSq, to: coords, promotion: 'q' });
-                    selectedSq = null;
-                    renderBoard();
+                    const isMoveValid = validTargets.includes(coords);
                     
-                    if (move) {
-                        // Foydalanuvchi yurgandan so'ng AI o'ylaydi
+                    if (isMoveValid) {
+                        game.move({ from: selectedSq, to: coords, promotion: 'q' });
+                        selectedSq = null;
+                        renderBoard();
+                        checkGameOver();
+                        
                         if (!game.game_over()) {
-                            setTimeout(makeAIMove, 600);
-                        } else {
-                            alert("O'yin tugadi!");
+                            setTimeout(makeAIMove, 500); // 0.5s dan so'ng kompyuter yuradi
                         }
+                    } else {
+                        // Boshqa donani tanlash yoki bekor qilish
+                        if (cell && cell.color === 'w') {
+                            selectedSq = coords;
+                        } else {
+                            selectedSq = null;
+                        }
+                        renderBoard();
                     }
                 }
             };
@@ -654,83 +698,92 @@ function renderBoard() {
     wrap.appendChild(boardEl);
 }
 
+// AI Yurishi
 function makeAIMove() {
     const moves = game.moves();
     if (moves.length > 0) {
         const randomMove = moves[Math.floor(Math.random() * moves.length)];
         game.move(randomMove);
         renderBoard();
-        if (game.game_over()) {
-            setTimeout(() => alert("O'yin tugadi!"), 200);
+        checkGameOver();
+    }
+}
+
+// O'yin tugashini tekshirish va Overlay chiqarish
+function checkGameOver() {
+    if (!game.game_over()) return;
+
+    let title = "";
+    let sub = "";
+    let color = "";
+
+    if (game.in_checkmate()) {
+        if (game.turn() === 'b') { 
+            title = "🏆 Checkmate!<br>You win!"; sub = "Siz kompyuterni yengdingiz!"; color = "var(--gold)"; 
+        } else { 
+            title = "💀 Checkmate!<br>You lose!"; sub = "Kompyuter g'alaba qozondi."; color = "var(--red)"; 
         }
+    } else if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
+        title = "🤝 Draw"; sub = "O'yin durang bilan yakunlandi."; color = "#60a5fa";
     }
+
+    const wrap = document.getElementById('board-wrap');
+    const overlay = document.createElement('div');
+    overlay.className = 'end-overlay';
+    overlay.innerHTML = `
+        <div class="end-title" style="color:${color}">${title}</div>
+        <div class="end-sub">${sub}</div>
+        <button class="end-btn" onclick="startVsAI()">Play Again</button>
+    `;
+    wrap.appendChild(overlay);
 }
 
-function showMatchModal() {
-    const chess = curGame === 'chess';
-    document.getElementById('m-game').textContent = chess ? 'Chess' : 'Checkers';
-    document.getElementById('m-icon').textContent = chess ? '♟' : '⬛';
-    document.getElementById('m-icon').style.animation = "none"; // Board chiqqanda aylanishni to'xtatish
-    
-    document.getElementById('match-modal').classList.add('open');
-
-    if (chess) {
-        if (game) game.reset();
-        renderBoard();
-    } else {
-        document.getElementById('board-wrap').innerHTML = '<p style="font-size:10px; padding:10px; color:#fff;">Checkers AI tez kunda...</p>';
-    }
-}
-
-function closeModal() {
-    document.getElementById('match-modal').classList.remove('open');
-    document.getElementById('m-icon').style.animation = "spin 2s linear infinite";
-}
-// AI bilan o'yinni darhol boshlovchi maxsus funksiya
+// "vs AI" bosilganda Fullscreen oynani ishga tushirish
 function startVsAI() {
-    // 1. Modal oynani ochamiz
     const modal = document.getElementById('match-modal');
     if (!modal) return;
-    modal.classList.add('open');
+    
+    // Fullscreen klassini qo'shish
+    modal.classList.add('open', 'fs-modal');
 
-    // 2. Sarlavhani "Siz vs AI" ga o'zgartiramiz
+    // Sarlavhani almashtirish
     const titleElements = modal.querySelectorAll('.mtitle');
-    if(titleElements.length > 0) titleElements[0].innerText = "Siz vs Kompyuter (AI)";
+    if(titleElements.length > 0) titleElements[0].innerText = "Siz vs AI";
 
-    // 3. Aylanadigan "kutish" belgisini yashiramiz
+    // Qidiruv animatsiyasi va yozuvlarini yashirish
     const icon = document.getElementById('m-icon');
     if (icon) {
         icon.style.display = 'none';
-        
-        // Ikonkadan keyingi matnni "O'yin boshlandi" ga almashtiramiz
         const textDiv = icon.nextElementSibling;
-        if (textDiv) {
-            textDiv.innerHTML = '<strong style="color:var(--green);font-size:18px">O\'yin boshlandi!</strong><br><span style="font-size:13px;color:var(--muted)">Siz oqlardasiz. Birinchi yurishni qiling.</span>';
-        }
+        if (textDiv) textDiv.style.display = 'none';
     }
 
-    // 4. AI bilan o'yinda "Create Room" kerak emas, shuning uchun uni yashiramiz
+    // "Create Room" tugmasini yashirish
     const buttons = modal.querySelectorAll('button');
     buttons.forEach(btn => {
-        if (btn.innerText.includes('Create Room')) {
-            btn.style.display = 'none';
-        }
-        if (btn.innerText.includes('Cancel')) {
-            btn.innerText = "Chiqish";
-        }
+        if (btn.innerText.includes('Create Room')) btn.style.display = 'none';
+        if (btn.innerText.includes('Cancel')) btn.innerText = "Chiqish";
     });
 
-    // 5. O'yin motorini noldan yuklab, doskani chizamiz
     if (typeof Chess !== 'undefined') {
         game = new Chess();
         selectedSq = null;
         renderBoard();
     } else {
-        alert("Shaxmat kutubxonasi yuklanmadi. Iltimos, sahifani yangilang.");
+        alert("Shaxmat kutubxonasi yuklanmadi. Iltimos sahifani yangilang.");
     }
 }
 
-// Ilovani boshlash
+// Eski funksiyalarni tozalash (xalaqit bermasligi uchun)
+function showMatchModal() {
+    startVsAI(); // Hozircha oddiy tugmalar ham AI ni ochadi
+}
+
+function closeModal() {
+    const modal = document.getElementById('match-modal');
+    if(modal) modal.classList.remove('open', 'fs-modal');
+}
+
 showScreen('play');
 </script>
 </body>
