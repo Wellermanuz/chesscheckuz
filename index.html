@@ -238,7 +238,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
   <div class="profile-wrap">
     <div class="av-wrap">
       <div class="avatar">♟</div>
-      <div class="lvl-badge">Lvl 12</div>
+      <div class="lvl-badge" id="user-lvl-badge">🪵 Lvl 1</div>
     </div>
     <div class="pinfo">
       <div class="pname">Player_One</div>
@@ -249,10 +249,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
     </div>
     <div class="ring-wrap">
       <svg width="52" height="52" viewBox="0 0 52 52">
-        <circle cx="26" cy="26" r="21" fill="none" stroke="#1a3050" stroke-width="4"/>
-        <circle cx="26" cy="26" r="21" fill="none" stroke="#f59e0b" stroke-width="4" stroke-dasharray="132" stroke-dashoffset="40" stroke-linecap="round"/>
-      </svg>
-      <div class="ring-num">12</div>
+    <circle cx="26" cy="26" r="21" fill="none" stroke="#1a3050" stroke-width="4"/>
+    <circle id="user-ring-circle" cx="26" cy="26" r="21" fill="none" stroke="#8B5A2B" stroke-width="4" stroke-dasharray="131"/>
+</svg>
+<div class="ring-num" id="user-ring-num">1</div>
     </div>
   </div>
 
@@ -617,46 +617,71 @@ const user = tg.initDataUnsafe.user;
 if (user && document.querySelector('.pname')) document.querySelector('.pname').innerText = user.first_name;
 
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
-let curGame = 'chess';
+let curGame = 'chess'; // Hozirgi tanlangan o'yin turi
 let aiDifficulty = null; 
 let globalLastMove = null; 
 
-// --- BALLAR VA G'ALABALAR XOTIRASI ---
-let userPts = 0;
-let userWins = 0;
+// --- XOTIRA TIZIMI (ALOHIDA LIGALAR) ---
+let gameStats = {
+    chess: { pts: 0, wins: 0 },
+    checkers: { pts: 0, wins: 0 }
+};
 
-let savedPts = localStorage.getItem('chess_checkers_pts');
-let savedWins = localStorage.getItem('chess_checkers_wins');
-
-if (savedPts === null || savedWins === null) {
-    // Agar birinchi marta kirayotgan bo'lsa
-    userPts = 0;
-    userWins = 0;
-    localStorage.setItem('chess_checkers_pts', userPts);
-    localStorage.setItem('chess_checkers_wins', userWins);
-    
-    setTimeout(() => {
-        if (tg && tg.showAlert) {
-            tg.showAlert("⚡ Chess & Checkers o'yiniga xush kelibsiz!\n\nAI ni yengib, ball va g'alabalar sonini oshiring!");
-        } else {
-            alert("⚡ Chess & Checkers o'yiniga xush kelibsiz!");
-        }
-    }, 500);
+// Saqlangan ma'lumotlarni o'qish
+let savedStats = localStorage.getItem('chess_checkers_stats');
+if (savedStats) {
+    gameStats = JSON.parse(savedStats);
 } else {
-    // Eski o'yinchi bo'lsa
-    userPts = parseInt(savedPts);
-    userWins = parseInt(savedWins);
+    localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats));
+    setTimeout(() => {
+        if (tg && tg.showAlert) tg.showAlert("⚡ O'yinga xush kelibsiz!\n\nAI ni yengib, reyting va ligalarni ko'taring!");
+        else alert("⚡ O'yinga xush kelibsiz!");
+    }, 500);
 }
 
-// Ekranda Ballar va G'alabalarni yangilash
+// LIGA VA LEVEL HISOBLASH ALGORITMI
+function getLevelInfo(pts) {
+    let level = Math.floor(pts / 100) + 1; // Har 100 ball bitta level
+    let league = "";
+    let icon = "";
+    let color = "";
+
+    if (level <= 3)      { league = "Wood";    icon = "🪵"; color = "#8B5A2B"; } // 1,2,3
+    else if (level <= 6) { league = "Bronze";  icon = "🥉"; color = "#CD7F32"; } // 4,5,6
+    else if (level <= 9) { league = "Silver";  icon = "🥈"; color = "#C0C0C0"; } // 7,8,9
+    else if (level <= 12){ league = "Gold";    icon = "🥇"; color = "#FFD700"; } // 10,11,12
+    else if (level <= 15){ league = "Crystal"; icon = "💎"; color = "#00FFFF"; } // 13,14,15
+    else                 { league = "Master";  icon = "👑"; color = "#FF00FF"; } // 16+
+
+    return { level, league, icon, color };
+}
+
+// Ekranda Ballar, G'alabalar va LIGAni yangilash
 function updateStatsUI() {
+    let currentStats = gameStats[curGame]; // Tanlangan o'yinga qarab (chess yoki checkers)
+    let info = getLevelInfo(currentStats.pts);
+
     const ptsMain = document.getElementById('user-pts-main');
     const ptsShop = document.getElementById('user-pts-shop');
     const winsMain = document.getElementById('user-wins-main');
     
-    if (ptsMain) ptsMain.innerText = userPts + " pts";
-    if (ptsShop) ptsShop.innerText = userPts; 
-    if (winsMain) winsMain.innerText = userWins + " wins";
+    // Ballar va G'alabalar
+    if (ptsMain) ptsMain.innerText = currentStats.pts + " pts";
+    if (ptsShop) ptsShop.innerText = currentStats.pts; 
+    if (winsMain) winsMain.innerText = currentStats.wins + " wins";
+
+    // Lvl va Ring
+    const lvlBadge = document.getElementById('user-lvl-badge');
+    const ringNum = document.getElementById('user-ring-num');
+    const ringCircle = document.getElementById('user-ring-circle');
+
+    if (lvlBadge) {
+        lvlBadge.innerText = `${info.icon} Lvl ${info.level}`;
+        lvlBadge.style.color = info.color;
+        lvlBadge.style.borderColor = info.color;
+    }
+    if (ringNum) ringNum.innerText = info.level;
+    if (ringCircle) ringCircle.setAttribute('stroke', info.color);
 }
 
 function showScreen(n) {
@@ -675,8 +700,12 @@ function selGame(g) {
     curGame = g;
     document.getElementById('gt-chess').classList.toggle('active', g === 'chess');
     document.getElementById('gt-check').classList.toggle('active', g === 'checkers');
+    
     const playBtn = document.querySelector('.play-btn');
     if (playBtn) playBtn.innerHTML = g === 'chess' ? '⚡ CHESS MATCH' : '⚡ CHECKERS MATCH';
+
+    // O'yin turi o'zgarganda statistika va Ligani darhol yangilash!
+    updateStatsUI();
 }
 
 // ==========================================
@@ -1013,7 +1042,7 @@ function makeChkAIMove() {
 }
 
 // ==========================================
-// 4. O'YIN BOSHQARUVI, BALLAR VA QIYINCHILIK
+// 4. O'YIN BOSHQARUVI, BALLAR VA LIGALAR
 // ==========================================
 function checkGameOver(gameObj, type) {
     let isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
@@ -1042,18 +1071,17 @@ function checkGameOver(gameObj, type) {
         } else { title = "🤝 Durang"; sub = "O'yin tugadi."; color = "#60a5fa"; }
     }
 
-    // BALLAR VA G'ALABALARNI HISOBLASH
+    // TANLANGAN O'YIN TURIGA QARAB BALLARNI HISOBLASH (CHESS yoki CHECKERS)
     if (isWin) {
-        userPts += 20; 
-        userWins += 1; // G'alabaga +1 qo'shildi!
+        gameStats[type].pts += 20; 
+        gameStats[type].wins += 1;
     } else if (isLose) {
-        userPts -= 10; 
-        if (userPts < 0) userPts = 0; 
+        gameStats[type].pts -= 10; 
+        if (gameStats[type].pts < 0) gameStats[type].pts = 0; 
     }
     
-    // Xotiraga saqlash va Ekranni yangilash
-    localStorage.setItem('chess_checkers_pts', userPts);
-    localStorage.setItem('chess_checkers_wins', userWins);
+    // JSON qilib barcha statlarni xotiraga saqlash
+    localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats));
     updateStatsUI();
 
     const wrap = document.getElementById('board-wrap');
@@ -1073,9 +1101,7 @@ window.selectDifficulty = function(level) {
 
 window.finalStartGame = function() {
     if (!aiDifficulty) return; 
-    
     unlockAudio(); 
-
     globalLastMove = null; 
     isAITurn = false;
     
