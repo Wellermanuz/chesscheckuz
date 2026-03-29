@@ -556,9 +556,9 @@ dynamicStyles.innerHTML = `
   @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
   .mandatory-piece { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; }
 
-  /* DARAJA TANLASH EKRANI (YANGI KONTEYNER) */
-  .diff-mode-wrap { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .diff-title { font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--gold); margin-bottom: 30px; font-weight: 900; text-align: center; letter-spacing: 1px; }
+  /* DARAJA TANLASH EKRANI (MARKAZLASHTIRILGAN) */
+  .diff-mode-wrap { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: -8vh; /* Optik markazga surish */ }
+  .diff-title { font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--gold); margin-bottom: 24px; font-weight: 900; text-align: center; letter-spacing: 1px; }
 
   /* QIYINCHILIK TUGMALARI */
   .diff-btn { background: var(--s2); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; width: 100%; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
@@ -575,10 +575,11 @@ dynamicStyles.innerHTML = `
   .diff-btn.active.medium { background: rgba(245, 158, 11, 0.2); border-color: var(--gold); }
   .diff-btn.active.hard { background: rgba(239, 68, 68, 0.2); border-color: var(--red); }
 
-  /* BOSHLASH TUGMASI (TO'G'RILANDI) */
-  .start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: all 0.3s ease; margin-top: 10px; visibility: hidden; opacity: 0; }
-  .start-game-btn.active { visibility: visible; opacity: 1; }
+  /* BOSHLASH TUGMASI (DISPLAY:NONE va ANIMATSIYA) */
+  .start-game-btn { display: none; background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
+  .start-game-btn.active { display: block; animation: popUpBtn 0.3s ease-out forwards; }
   .start-game-btn:active { transform: scale(0.97); }
+  @keyframes popUpBtn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
   /* OVERLAY */
   .end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; backdrop-filter: blur(4px); }
@@ -597,7 +598,7 @@ if (user && document.querySelector('.pname')) document.querySelector('.pname').i
 
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
-let aiDifficulty = null; // Default holda tanlanmagan
+let aiDifficulty = null; 
 
 function showScreen(n) {
     SCREENS.forEach(s => {
@@ -719,8 +720,8 @@ function makeChessAIMove() {
     
     let bestMove = moves[Math.floor(Math.random() * moves.length)];
     if (aiDifficulty !== 'easy') {
-        let bestVal = Infinity; // AI (Qora) minusga intiladi
-        let depth = aiDifficulty === 'medium' ? 1 : 2; // Hard = 2 qadam oldinni hisoblaydi
+        let bestVal = Infinity; 
+        let depth = aiDifficulty === 'medium' ? 1 : 2; 
         
         for (let i = 0; i < moves.length; i++) {
             chessGame.move(moves[i]);
@@ -965,16 +966,16 @@ window.selectDifficulty = function(level) {
     document.querySelector(`.diff-btn.${level}`).classList.add('active');
     
     const startBtn = document.getElementById('final-start-btn');
-    if (startBtn) startBtn.classList.add('active'); // Boshlash tugmasini ko'rsatish
+    if (startBtn) startBtn.classList.add('active'); // Animatsiya bilan chiqadi
 }
 
-// Boshlash tugmasi mantiqi
+// Boshlash
 window.finalStartGame = function() {
     if (!aiDifficulty) return; 
     
     const wrap = document.getElementById('board-wrap');
     wrap.innerHTML = '';
-    wrap.className = 'fs-board-wrap'; // Doska uchun kvadrat rejimini qaytaramiz
+    wrap.className = 'fs-board-wrap'; 
     wrap.style.cssText = ''; 
 
     if (curGame === 'chess') {
@@ -1005,13 +1006,13 @@ function startVsAI() {
     const closeX = modal.querySelector('.m-close');
     if(closeX) closeX.setAttribute('onclick', 'closeModal()');
 
-    // QIYINCHILIK TANLASH EKRANI (MARKAZLASHTIRILGAN VA TO'G'RILANGAN)
+    // Yangilangan konteyner uslubi (markazda)
     const wrap = document.getElementById('board-wrap');
     wrap.className = 'diff-mode-wrap'; 
-    wrap.style.cssText = ''; // Eski kvadrat uslubini tozalaymiz
+    wrap.style.cssText = ''; 
     wrap.innerHTML = `
-        <div class="diff-title">RAQIB DARAJASINI TANLANG</div>
         <div style="width: 100%; max-width: 320px;">
+            <div class="diff-title">RAQIB DARAJASINI TANLANG</div>
             <button class="diff-btn easy" onclick="selectDifficulty('easy')">🟢 Oson <span style="font-size:12px; font-weight:500">(Yangi o'rganuvchilar)</span></button>
             <button class="diff-btn medium" onclick="selectDifficulty('medium')">🟡 O'rta <span style="font-size:12px; font-weight:500">(Tajribalilar)</span></button>
             <button class="diff-btn hard" onclick="selectDifficulty('hard')">🔴 Qiyin <span style="font-size:12px; font-weight:500">(Haqiqiy strateg)</span></button>
@@ -1019,7 +1020,7 @@ function startVsAI() {
         </div>
     `;
     
-    aiDifficulty = null; // Eski tanlovni tozalash
+    aiDifficulty = null; 
 }
 
 function showMatchModal() { startVsAI(); }
