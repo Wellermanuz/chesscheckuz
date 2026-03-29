@@ -556,11 +556,10 @@ dynamicStyles.innerHTML = `
   @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
   .mandatory-piece { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; }
 
-  /* DARAJA TANLASH EKRANI (MARKAZLASHTIRILGAN) */
-  .diff-mode-wrap { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: -8vh; /* Optik markazga surish */ }
+  /* DARAJA TANLASH EKRANI */
+  .diff-mode-wrap { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: -8vh; }
   .diff-title { font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--gold); margin-bottom: 24px; font-weight: 900; text-align: center; letter-spacing: 1px; }
 
-  /* QIYINCHILIK TUGMALARI */
   .diff-btn { background: var(--s2); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; width: 100%; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
   .diff-btn:active { transform: scale(0.97); }
   .diff-btn.easy { border-color: rgba(34, 197, 94, 0.5); }
@@ -570,12 +569,10 @@ dynamicStyles.innerHTML = `
   .diff-btn.hard { border-color: rgba(239, 68, 68, 0.5); }
   .diff-btn.hard:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--red); }
 
-  /* TANLANGAN DARAJA USLUBLARI */
   .diff-btn.active.easy { background: rgba(34, 197, 94, 0.2); border-color: var(--green); }
   .diff-btn.active.medium { background: rgba(245, 158, 11, 0.2); border-color: var(--gold); }
   .diff-btn.active.hard { background: rgba(239, 68, 68, 0.2); border-color: var(--red); }
 
-  /* BOSHLASH TUGMASI (DISPLAY:NONE va ANIMATSIYA) */
   .start-game-btn { display: none; background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
   .start-game-btn.active { display: block; animation: popUpBtn 0.3s ease-out forwards; }
   .start-game-btn:active { transform: scale(0.97); }
@@ -590,6 +587,19 @@ dynamicStyles.innerHTML = `
 `;
 document.head.appendChild(dynamicStyles);
 
+// --- 0. OVOZ EFFEKTLARI (YANGI) ---
+const sndMove = new Audio('https://lichess1.org/assets/sound/standard/Move.ogg');
+const sndCapture = new Audio('https://lichess1.org/assets/sound/standard/Capture.ogg');
+const sndEnd = new Audio('https://lichess1.org/assets/sound/standard/GenericNotify.ogg');
+
+function playSound(type) {
+    try {
+        if (type === 'move') { sndMove.currentTime = 0; sndMove.play().catch(e => {}); }
+        else if (type === 'capture') { sndCapture.currentTime = 0; sndCapture.play().catch(e => {}); }
+        else if (type === 'end') { sndEnd.currentTime = 0; sndEnd.play().catch(e => {}); }
+    } catch (e) {} // Brauzer ovozni bloklasa xato bermaydi
+}
+
 // --- 1. ASOSIY NAVIGATSIYA ---
 const tg = window.Telegram.WebApp;
 tg.expand();
@@ -599,6 +609,7 @@ if (user && document.querySelector('.pname')) document.querySelector('.pname').i
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
 let aiDifficulty = null; 
+let globalLastMove = null; // Oxirgi yurishni saqlash (Yurish izi uchun)
 
 function showScreen(n) {
     SCREENS.forEach(s => {
@@ -640,9 +651,7 @@ let chessSelectedSq = null;
 const chessPieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
 function evalChess() {
     let val = 0;
-    chessGame.board().forEach(row => {
-        row.forEach(p => { if (p) val += chessPieceValues[p.type] * (p.color === 'w' ? 1 : -1); });
-    });
+    chessGame.board().forEach(row => { row.forEach(p => { if (p) val += chessPieceValues[p.type] * (p.color === 'w' ? 1 : -1); }); });
     return val;
 }
 
@@ -674,7 +683,17 @@ function renderChessBoard() {
             const sq = document.createElement('div');
             const coords = String.fromCharCode(97 + cIdx) + (8 - rIdx);
             sq.className = 'fs-sq';
-            sq.style.backgroundColor = (rIdx + cIdx) % 2 === 0 ? '#e8d5b7' : '#7c5c3a';
+            
+            // Asosiy rang
+            let isLight = (rIdx + cIdx) % 2 === 0;
+            sq.style.backgroundColor = isLight ? '#e8d5b7' : '#7c5c3a';
+
+            // Oxirgi yurish izi (YANGI)
+            if (globalLastMove && (globalLastMove.from === coords || globalLastMove.to === coords)) {
+                sq.style.backgroundColor = isLight ? '#fde047' : '#eab308'; // Sariqroq rang
+            }
+
+            // Tanlangan donacha foni
             if (chessSelectedSq === coords) sq.style.backgroundColor = '#f59e0b';
 
             if (cell) {
@@ -699,9 +718,16 @@ function renderChessBoard() {
                     if (cell && cell.color === 'w') { chessSelectedSq = coords; renderChessBoard(); }
                 } else {
                     if (validTargets.includes(coords)) {
-                        chessGame.move({ from: chessSelectedSq, to: coords, promotion: 'q' });
-                        chessSelectedSq = null; renderChessBoard(); checkGameOver(chessGame, 'chess');
-                        if (!chessGame.game_over()) setTimeout(makeChessAIMove, 100);
+                        let moveObj = chessGame.move({ from: chessSelectedSq, to: coords, promotion: 'q' });
+                        playSound(moveObj.captured ? 'capture' : 'move'); // Ovoz
+                        globalLastMove = { from: moveObj.from, to: moveObj.to }; // Iz qoldirish
+                        chessSelectedSq = null; 
+                        renderChessBoard(); 
+                        checkGameOver(chessGame, 'chess');
+                        if (!chessGame.game_over()) {
+                            // AI SEKINLASHDI: O'ylash uchun 600ms vaqt oladi
+                            setTimeout(makeChessAIMove, 600); 
+                        }
                     } else {
                         chessSelectedSq = (cell && cell.color === 'w') ? coords : null;
                         renderChessBoard();
@@ -722,7 +748,6 @@ function makeChessAIMove() {
     if (aiDifficulty !== 'easy') {
         let bestVal = Infinity; 
         let depth = aiDifficulty === 'medium' ? 1 : 2; 
-        
         for (let i = 0; i < moves.length; i++) {
             chessGame.move(moves[i]);
             let boardVal = minimaxChess(depth - 1, -Infinity, Infinity, true);
@@ -731,7 +756,9 @@ function makeChessAIMove() {
         }
     }
     
-    chessGame.move(bestMove);
+    let moveObj = chessGame.move(bestMove);
+    playSound(moveObj.captured ? 'capture' : 'move'); // Ovoz
+    globalLastMove = { from: moveObj.from, to: moveObj.to }; // Iz qoldirish
     renderChessBoard(); checkGameOver(chessGame, 'chess');
 }
 
@@ -866,7 +893,15 @@ function renderCheckersBoard() {
             (function(r, c) {
                 const sq = document.createElement('div');
                 sq.className = 'fs-sq';
-                sq.style.backgroundColor = (r + c) % 2 === 0 ? '#e8d5b7' : '#7c5c3a';
+                
+                let isLight = (r + c) % 2 === 0;
+                sq.style.backgroundColor = isLight ? '#e8d5b7' : '#7c5c3a';
+
+                // Oxirgi yurish izi (YANGI)
+                if (globalLastMove && ((globalLastMove.from.r === r && globalLastMove.from.c === c) || (globalLastMove.to.r === r && globalLastMove.to.c === c))) {
+                    sq.style.backgroundColor = isLight ? '#fde047' : '#eab308';
+                }
+
                 if (chkSelectedSq && chkSelectedSq.r === r && chkSelectedSq.c === c) sq.style.backgroundColor = '#f59e0b';
 
                 let pVal = chkGame.board[r][c];
@@ -893,8 +928,17 @@ function renderCheckersBoard() {
                     } else {
                         let move = validMoves.filter(m => m.to.r === r && m.to.c === c)[0];
                         if (move) {
-                            chkGame.move(move); chkSelectedSq = null; renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
-                            if (!chkGame.isGameOver() && chkGame.turn === -1) setTimeout(makeChkAIMove, 100);
+                            chkGame.move(move); 
+                            playSound(move.jump ? 'capture' : 'move'); // Ovoz
+                            globalLastMove = { from: move.from, to: move.to }; // Iz
+                            chkSelectedSq = null; 
+                            renderCheckersBoard(); 
+                            checkGameOver(chkGame, 'checkers');
+                            
+                            if (!chkGame.isGameOver() && chkGame.turn === -1) {
+                                // AI SEKINLASHDI: 700ms o'ylaydi
+                                setTimeout(makeChkAIMove, 700); 
+                            }
                         } else {
                             if (!chkGame.multiJumpSq && pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) chkSelectedSq = {r, c}; 
                             else if (!chkGame.multiJumpSq) chkSelectedSq = null;
@@ -918,7 +962,6 @@ function makeChkAIMove() {
     if (aiDifficulty !== 'easy') {
         let bestVal = Infinity; 
         let depth = aiDifficulty === 'medium' ? 1 : 3;
-        
         for (let i = 0; i < moves.length; i++) {
             let clone = chkGame.clone();
             clone.move(moves[i]);
@@ -928,9 +971,12 @@ function makeChkAIMove() {
     }
 
     chkGame.move(bestMove);
+    playSound(bestMove.jump ? 'capture' : 'move'); // Ovoz
+    globalLastMove = { from: bestMove.from, to: bestMove.to }; // Iz
     renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
     
-    if (chkGame.turn === -1 && !chkGame.isGameOver()) setTimeout(makeChkAIMove, 400); 
+    // Zanjirli urish davom etsa yana kutib yuradi
+    if (chkGame.turn === -1 && !chkGame.isGameOver()) setTimeout(makeChkAIMove, 600); 
 }
 
 // ==========================================
@@ -939,6 +985,8 @@ function makeChkAIMove() {
 function checkGameOver(gameObj, type) {
     let isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
     if (!isOver) return;
+
+    playSound('end'); // Tugash ovozi
 
     let title = "", sub = "", color = "";
     if (type === 'chess') {
@@ -959,19 +1007,18 @@ function checkGameOver(gameObj, type) {
     wrap.appendChild(overlay);
 }
 
-// Darajani tanlash
 window.selectDifficulty = function(level) {
     aiDifficulty = level;
     document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector(`.diff-btn.${level}`).classList.add('active');
     
     const startBtn = document.getElementById('final-start-btn');
-    if (startBtn) startBtn.classList.add('active'); // Animatsiya bilan chiqadi
+    if (startBtn) startBtn.classList.add('active'); 
 }
 
-// Boshlash
 window.finalStartGame = function() {
     if (!aiDifficulty) return; 
+    globalLastMove = null; // Yangi o'yinda izlarni tozalash
     
     const wrap = document.getElementById('board-wrap');
     wrap.innerHTML = '';
@@ -1006,7 +1053,6 @@ function startVsAI() {
     const closeX = modal.querySelector('.m-close');
     if(closeX) closeX.setAttribute('onclick', 'closeModal()');
 
-    // Yangilangan konteyner uslubi (markazda)
     const wrap = document.getElementById('board-wrap');
     wrap.className = 'diff-mode-wrap'; 
     wrap.style.cssText = ''; 
@@ -1019,7 +1065,6 @@ function startVsAI() {
             <button id="final-start-btn" class="start-game-btn" onclick="finalStartGame()">⚡ Boshlash</button>
         </div>
     `;
-    
     aiDifficulty = null; 
 }
 
