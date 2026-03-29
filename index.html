@@ -560,7 +560,7 @@ dynamicStyles.innerHTML = `
   @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
   .mandatory-piece { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; }
 
-  /* DARAJA TANLASH EKRANI */
+  /* DARAJA VA VAQT TANLASH EKRANI */
   .diff-mode-wrap { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: -8vh; }
   .diff-title { font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--gold); margin-bottom: 24px; font-weight: 900; text-align: center; letter-spacing: 1px; }
   .diff-btn { background: var(--s2); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; width: 100%; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
@@ -571,14 +571,15 @@ dynamicStyles.innerHTML = `
   .diff-btn.medium:hover { background: rgba(245, 158, 11, 0.1); border-color: var(--gold); }
   .diff-btn.hard { border-color: rgba(239, 68, 68, 0.5); }
   .diff-btn.hard:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--red); }
-  .diff-btn.active.easy { background: rgba(34, 197, 94, 0.2); border-color: var(--green); }
-  .diff-btn.active.medium { background: rgba(245, 158, 11, 0.2); border-color: var(--gold); }
-  .diff-btn.active.hard { background: rgba(239, 68, 68, 0.2); border-color: var(--red); }
-
-  .start-game-btn { display: none; background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
-  .start-game-btn.active { display: block; animation: popUpBtn 0.3s ease-out forwards; }
+  
+  .start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
   .start-game-btn:active { transform: scale(0.97); }
-  @keyframes popUpBtn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* TAYMER VA O'YIN KONTEYNERI (YANGI) */
+  .timer-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; }
+  .game-header, .game-footer { display: flex; justify-content: space-between; align-items: center; font-family: 'Rajdhani', sans-serif; color: var(--text); font-size: 18px; font-weight: 700; background: var(--s2); padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+  .timer-box { background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 18px; letter-spacing: 1px; color: #fff; transition: 0.3s; border: 1px solid transparent; }
+  .timer-box.active { background: rgba(34, 197, 94, 0.2); border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(34, 197, 94, 0.3); }
 
   /* OVERLAY */
   .end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; backdrop-filter: blur(4px); }
@@ -614,72 +615,49 @@ function playSound(type) {
 const tg = window.Telegram.WebApp;
 tg.expand();
 const user = tg.initDataUnsafe.user;
+const userName = user ? user.first_name : "Siz";
 if (user && document.querySelector('.pname')) document.querySelector('.pname').innerText = user.first_name;
 
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
-let curGame = 'chess'; // Hozirgi tanlangan o'yin turi
+let curGame = 'chess';
 let aiDifficulty = null; 
+let gameTimeMins = null; // Tanlangan vaqt
 let globalLastMove = null; 
 
-// --- XOTIRA TIZIMI (ALOHIDA LIGALAR) ---
-let gameStats = {
-    chess: { pts: 0, wins: 0 },
-    checkers: { pts: 0, wins: 0 }
-};
+// --- TAYMER O'ZGARUVCHILARI (YANGI) ---
+let gameTimerInterval = null;
+let userTimeSec = 0;
+let aiTimeSec = 0;
 
-// Saqlangan ma'lumotlarni o'qish
+// --- BALLAR VA XOTIRA TIZIMI ---
+let gameStats = { chess: { pts: 0, wins: 0 }, checkers: { pts: 0, wins: 0 } };
 let savedStats = localStorage.getItem('chess_checkers_stats');
-if (savedStats) {
-    gameStats = JSON.parse(savedStats);
-} else {
-    localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats));
-    setTimeout(() => {
-        if (tg && tg.showAlert) tg.showAlert("⚡ O'yinga xush kelibsiz!\n\nAI ni yengib, reyting va ligalarni ko'taring!");
-        else alert("⚡ O'yinga xush kelibsiz!");
-    }, 500);
-}
+if (savedStats) { gameStats = JSON.parse(savedStats); } 
+else { localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats)); }
 
-// LIGA VA LEVEL HISOBLASH ALGORITMI
 function getLevelInfo(pts) {
-    let level = Math.floor(pts / 100) + 1; // Har 100 ball bitta level
-    let league = "";
-    let icon = "";
-    let color = "";
-
-    if (level <= 3)      { league = "Wood";    icon = "🪵"; color = "#8B5A2B"; } // 1,2,3
-    else if (level <= 6) { league = "Bronze";  icon = "🥉"; color = "#CD7F32"; } // 4,5,6
-    else if (level <= 9) { league = "Silver";  icon = "🥈"; color = "#C0C0C0"; } // 7,8,9
-    else if (level <= 12){ league = "Gold";    icon = "🥇"; color = "#FFD700"; } // 10,11,12
-    else if (level <= 15){ league = "Crystal"; icon = "💎"; color = "#00FFFF"; } // 13,14,15
-    else                 { league = "Master";  icon = "👑"; color = "#FF00FF"; } // 16+
-
+    let level = Math.floor(pts / 100) + 1; 
+    let league = "", icon = "", color = "";
+    if (level <= 3)      { league = "Wood";    icon = "🪵"; color = "#8B5A2B"; } 
+    else if (level <= 6) { league = "Bronze";  icon = "🥉"; color = "#CD7F32"; } 
+    else if (level <= 9) { league = "Silver";  icon = "🥈"; color = "#C0C0C0"; } 
+    else if (level <= 12){ league = "Gold";    icon = "🥇"; color = "#FFD700"; } 
+    else if (level <= 15){ league = "Crystal"; icon = "💎"; color = "#00FFFF"; } 
+    else                 { league = "Master";  icon = "👑"; color = "#FF00FF"; } 
     return { level, league, icon, color };
 }
 
-// Ekranda Ballar, G'alabalar va LIGAni yangilash
 function updateStatsUI() {
-    let currentStats = gameStats[curGame]; // Tanlangan o'yinga qarab (chess yoki checkers)
+    let currentStats = gameStats[curGame]; 
     let info = getLevelInfo(currentStats.pts);
 
-    const ptsMain = document.getElementById('user-pts-main');
-    const ptsShop = document.getElementById('user-pts-shop');
-    const winsMain = document.getElementById('user-wins-main');
-    
-    // Ballar va G'alabalar
+    const ptsMain = document.getElementById('user-pts-main'), ptsShop = document.getElementById('user-pts-shop'), winsMain = document.getElementById('user-wins-main');
     if (ptsMain) ptsMain.innerText = currentStats.pts + " pts";
     if (ptsShop) ptsShop.innerText = currentStats.pts; 
     if (winsMain) winsMain.innerText = currentStats.wins + " wins";
 
-    // Lvl va Ring
-    const lvlBadge = document.getElementById('user-lvl-badge');
-    const ringNum = document.getElementById('user-ring-num');
-    const ringCircle = document.getElementById('user-ring-circle');
-
-    if (lvlBadge) {
-        lvlBadge.innerText = `${info.icon} Lvl ${info.level}`;
-        lvlBadge.style.color = info.color;
-        lvlBadge.style.borderColor = info.color;
-    }
+    const lvlBadge = document.getElementById('user-lvl-badge'), ringNum = document.getElementById('user-ring-num'), ringCircle = document.getElementById('user-ring-circle');
+    if (lvlBadge) { lvlBadge.innerText = `${info.icon} Lvl ${info.level}`; lvlBadge.style.color = info.color; lvlBadge.style.borderColor = info.color; }
     if (ringNum) ringNum.innerText = info.level;
     if (ringCircle) ringCircle.setAttribute('stroke', info.color);
 }
@@ -700,11 +678,8 @@ function selGame(g) {
     curGame = g;
     document.getElementById('gt-chess').classList.toggle('active', g === 'chess');
     document.getElementById('gt-check').classList.toggle('active', g === 'checkers');
-    
     const playBtn = document.querySelector('.play-btn');
     if (playBtn) playBtn.innerHTML = g === 'chess' ? '⚡ CHESS MATCH' : '⚡ CHECKERS MATCH';
-
-    // O'yin turi o'zgarganda statistika va Ligani darhol yangilash!
     updateStatsUI();
 }
 
@@ -717,11 +692,7 @@ let chessSelectedSq = null;
 let isAITurn = false; 
 
 const chessPieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
-function evalChess() {
-    let val = 0;
-    chessGame.board().forEach(row => { row.forEach(p => { if (p) val += chessPieceValues[p.type] * (p.color === 'w' ? 1 : -1); }); });
-    return val;
-}
+function evalChess() { let val = 0; chessGame.board().forEach(row => { row.forEach(p => { if (p) val += chessPieceValues[p.type] * (p.color === 'w' ? 1 : -1); }); }); return val; }
 function minimaxChess(depth, alpha, beta, isMax) {
     if (depth === 0 || chessGame.game_over()) return evalChess();
     let moves = chessGame.moves();
@@ -737,7 +708,7 @@ function minimaxChess(depth, alpha, beta, isMax) {
 }
 
 function renderChessBoard() {
-    const wrap = document.getElementById('board-wrap');
+    const wrap = document.getElementById('inner-board-wrap'); // TAYMER UCHUN ICHKI KONTEYNER
     if (!wrap || !chessGame) return;
     wrap.innerHTML = ''; wrap.className = 'fs-board-wrap'; wrap.style.cssText = ''; 
     const boardEl = document.createElement('div'); boardEl.className = 'fs-board';
@@ -752,11 +723,7 @@ function renderChessBoard() {
             sq.className = 'fs-sq';
             
             sq.style.backgroundColor = (rIdx + cIdx) % 2 === 0 ? '#e8d5b7' : '#7c5c3a';
-
-            if (globalLastMove && (globalLastMove.from === coords || globalLastMove.to === coords)) {
-                sq.classList.add('last-move');
-            }
-
+            if (globalLastMove && (globalLastMove.from === coords || globalLastMove.to === coords)) sq.classList.add('last-move');
             if (chessSelectedSq === coords) sq.style.backgroundColor = '#f59e0b'; 
 
             if (cell) {
@@ -770,13 +737,11 @@ function renderChessBoard() {
             }
 
             if (validTargets.includes(coords)) {
-                const ind = document.createElement('div');
-                ind.className = cell ? 'move-cap' : 'move-dot';
-                sq.appendChild(ind);
+                const ind = document.createElement('div'); ind.className = cell ? 'move-cap' : 'move-dot'; sq.appendChild(ind);
             }
 
             sq.onclick = () => {
-                if (chessGame.game_over() || isAITurn) return; 
+                if (chessGame.game_over() || isAITurn || userTimeSec <= 0) return; 
                 
                 if (!chessSelectedSq) {
                     if (cell && cell.color === 'w') { chessSelectedSq = coords; renderChessBoard(); }
@@ -790,8 +755,8 @@ function renderChessBoard() {
                         checkGameOver(chessGame, 'chess');
                         
                         if (!chessGame.game_over()) {
-                            isAITurn = true; 
-                            setTimeout(makeChessAIMove, 1000); 
+                            isAITurn = true; updateTimersUI(); // Taymerni darhol o'zgartirish
+                            setTimeout(makeChessAIMove, 800); 
                         }
                     } else {
                         chessSelectedSq = (cell && cell.color === 'w') ? coords : null;
@@ -806,6 +771,7 @@ function renderChessBoard() {
 }
 
 function makeChessAIMove() {
+    if (aiTimeSec <= 0) return;
     let moves = chessGame.moves({ verbose: true });
     if (moves.length === 0) { isAITurn = false; return; }
     
@@ -827,6 +793,7 @@ function makeChessAIMove() {
     isAITurn = false; 
     renderChessBoard(); 
     checkGameOver(chessGame, 'chess');
+    updateTimersUI();
 }
 
 // ==========================================
@@ -836,22 +803,14 @@ class CheckersEngine {
     constructor() { this.reset(); }
     reset() {
         this.board = [
-            [0,-1,0,-1,0,-1,0,-1],
-            [-1,0,-1,0,-1,0,-1,0],
-            [0,-1,0,-1,0,-1,0,-1],
-            [0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0],
-            [1,0,1,0,1,0,1,0],
-            [0,1,0,1,0,1,0,1],
-            [1,0,1,0,1,0,1,0]
+            [0,-1,0,-1,0,-1,0,-1], [-1,0,-1,0,-1,0,-1,0], [0,-1,0,-1,0,-1,0,-1], [0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0], [1,0,1,0,1,0,1,0], [0,1,0,1,0,1,0,1], [1,0,1,0,1,0,1,0]
         ];
-        this.turn = 1; 
-        this.multiJumpSq = null;
+        this.turn = 1; this.multiJumpSq = null;
     }
     clone() {
         let c = new CheckersEngine(); c.board = this.board.map(r => [...r]); c.turn = this.turn;
-        c.multiJumpSq = this.multiJumpSq ? {r: this.multiJumpSq.r, c: this.multiJumpSq.c} : null;
-        return c;
+        c.multiJumpSq = this.multiJumpSq ? {r: this.multiJumpSq.r, c: this.multiJumpSq.c} : null; return c;
     }
     getMoves(player, specificSq = null) {
         let moves = [], jumps = [];
@@ -895,15 +854,11 @@ class CheckersEngine {
         return jumps.length > 0 ? jumps : (specificSq ? [] : moves); 
     }
     move(m) {
-        let p = this.board[m.from.r][m.from.c];
-        this.board[m.from.r][m.from.c] = 0;
+        let p = this.board[m.from.r][m.from.c]; this.board[m.from.r][m.from.c] = 0;
         if (m.jump) this.board[m.jump.r][m.jump.c] = 0;
         if (Math.abs(p) === 1 && ((p === 1 && m.to.r === 0) || (p === -1 && m.to.r === 7))) p *= 2; 
         this.board[m.to.r][m.to.c] = p;
-        if (m.jump) {
-            let nextJumps = this.getMoves(this.turn, m.to);
-            if (nextJumps.length > 0) { this.multiJumpSq = m.to; return; }
-        }
+        if (m.jump) { let nextJumps = this.getMoves(this.turn, m.to); if (nextJumps.length > 0) { this.multiJumpSq = m.to; return; } }
         this.multiJumpSq = null; this.turn *= -1; 
     }
     isGameOver() { return this.getMoves(1).length === 0 || this.getMoves(-1).length === 0; }
@@ -914,8 +869,7 @@ function evalCheckers(board) {
     for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
         if (board[r][c] === 1) val += 10; else if (board[r][c] === 2) val += 30;
         else if (board[r][c] === -1) val -= 10; else if (board[r][c] === -2) val -= 30;
-    }
-    return val;
+    } return val;
 }
 function minimaxCheckers(game, depth, alpha, beta, isMax) {
     if (depth === 0 || game.isGameOver()) return evalCheckers(game.board);
@@ -936,7 +890,7 @@ let chkGame = new CheckersEngine();
 let chkSelectedSq = null;
 
 function renderCheckersBoard() {
-    const wrap = document.getElementById('board-wrap');
+    const wrap = document.getElementById('inner-board-wrap'); // TAYMER UCHUN ICHKI KONTEYNER
     if (!wrap) return;
     wrap.innerHTML = ''; wrap.className = 'fs-board-wrap'; wrap.style.cssText = ''; 
     const boardEl = document.createElement('div'); boardEl.className = 'fs-board';
@@ -951,11 +905,8 @@ function renderCheckersBoard() {
     for (let r=0; r<8; r++) {
         for (let c=0; c<8; c++) {
             (function(r, c) {
-                const sq = document.createElement('div');
-                sq.className = 'fs-sq';
-                
-                let isLight = (r + c) % 2 === 0;
-                sq.style.backgroundColor = isLight ? '#e8d5b7' : '#7c5c3a';
+                const sq = document.createElement('div'); sq.className = 'fs-sq';
+                let isLight = (r + c) % 2 === 0; sq.style.backgroundColor = isLight ? '#e8d5b7' : '#7c5c3a';
 
                 if (globalLastMove && ((globalLastMove.from.r === r && globalLastMove.from.c === c) || (globalLastMove.to.r === r && globalLastMove.to.c === c))) {
                     sq.classList.add('last-move');
@@ -967,36 +918,29 @@ function renderCheckersBoard() {
                 if (pVal !== 0) {
                     const pEl = document.createElement('div');
                     pEl.style.cssText = `width:75%;height:75%;border-radius:50%;box-shadow:0 4px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:24px;z-index:3; transition: all 0.2s;`;
-                    pEl.style.background = pVal > 0 ? '#f8fafc' : '#1e293b';
-                    pEl.style.border = pVal > 0 ? '3px solid #cbd5e1' : '3px solid #0f172a';
+                    pEl.style.background = pVal > 0 ? '#f8fafc' : '#1e293b'; pEl.style.border = pVal > 0 ? '3px solid #cbd5e1' : '3px solid #0f172a';
                     if (Math.abs(pVal) === 2) pEl.innerHTML = '👑';
                     if (pVal > 0 && mandatoryFroms.includes(r + ',' + c)) pEl.classList.add('mandatory-piece');
                     sq.appendChild(pEl);
                 }
 
                 if (validTargets.includes(r + ',' + c)) {
-                    const ind = document.createElement('div'); 
-                    ind.className = chkGame.board[r][c] !== 0 || validMoves.find(m => m.to.r===r && m.to.c===c).jump ? 'move-cap' : 'move-dot'; 
-                    sq.appendChild(ind);
+                    const ind = document.createElement('div'); ind.className = chkGame.board[r][c] !== 0 || validMoves.find(m => m.to.r===r && m.to.c===c).jump ? 'move-cap' : 'move-dot'; sq.appendChild(ind);
                 }
 
                 sq.onclick = () => {
-                    if (isAITurn || chkGame.turn === -1 || chkGame.isGameOver()) return; 
+                    if (isAITurn || chkGame.turn === -1 || chkGame.isGameOver() || userTimeSec <= 0) return; 
                     if (!chkSelectedSq) {
                         if (pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) { chkSelectedSq = {r, c}; renderCheckersBoard(); }
                     } else {
                         let move = validMoves.filter(m => m.to.r === r && m.to.c === c)[0];
                         if (move) {
-                            chkGame.move(move); 
-                            playSound(move.jump ? 'capture' : 'move'); 
-                            globalLastMove = { from: move.from, to: move.to }; 
-                            chkSelectedSq = null; 
-                            renderCheckersBoard(); 
-                            checkGameOver(chkGame, 'checkers');
+                            chkGame.move(move); playSound(move.jump ? 'capture' : 'move'); globalLastMove = { from: move.from, to: move.to }; 
+                            chkSelectedSq = null; renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
                             
                             if (!chkGame.isGameOver() && chkGame.turn === -1) {
-                                isAITurn = true; 
-                                setTimeout(makeChkAIMove, 1000); 
+                                isAITurn = true; updateTimersUI();
+                                setTimeout(makeChkAIMove, 800); 
                             }
                         } else {
                             if (!chkGame.multiJumpSq && pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) chkSelectedSq = {r, c}; 
@@ -1013,14 +957,13 @@ function renderCheckersBoard() {
 }
 
 function makeChkAIMove() {
-    if (chkGame.turn === 1 || chkGame.isGameOver()) { isAITurn = false; return; }
+    if (chkGame.turn === 1 || chkGame.isGameOver() || aiTimeSec <= 0) { isAITurn = false; return; }
     let moves = chkGame.getMoves(-1, chkGame.multiJumpSq);
     if (moves.length === 0) { isAITurn = false; return; }
 
     let bestMove = moves[Math.floor(Math.random() * moves.length)];
     if (aiDifficulty !== 'easy') {
-        let bestVal = Infinity; 
-        let depth = aiDifficulty === 'medium' ? 1 : 3;
+        let bestVal = Infinity; let depth = aiDifficulty === 'medium' ? 1 : 3;
         for (let i = 0; i < moves.length; i++) {
             let clone = chkGame.clone(); clone.move(moves[i]);
             let val = minimaxCheckers(clone, depth - 1, -Infinity, Infinity, clone.turn === 1);
@@ -1028,93 +971,177 @@ function makeChkAIMove() {
         }
     }
 
-    chkGame.move(bestMove);
-    playSound(bestMove.jump ? 'capture' : 'move'); 
-    globalLastMove = { from: bestMove.from, to: bestMove.to }; 
-    renderCheckersBoard(); 
-    checkGameOver(chkGame, 'checkers');
+    chkGame.move(bestMove); playSound(bestMove.jump ? 'capture' : 'move'); globalLastMove = { from: bestMove.from, to: bestMove.to }; 
+    renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
     
-    if (chkGame.turn === -1 && !chkGame.isGameOver()) {
-        setTimeout(makeChkAIMove, 800); 
-    } else {
-        isAITurn = false; 
-    }
+    if (chkGame.turn === -1 && !chkGame.isGameOver()) { setTimeout(makeChkAIMove, 800); } else { isAITurn = false; updateTimersUI(); }
 }
 
 // ==========================================
-// 4. O'YIN BOSHQARUVI, BALLAR VA LIGALAR
+// 4. TAYMER VA O'YIN BOSHQARUVI
 // ==========================================
-function checkGameOver(gameObj, type) {
-    let isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
-    if (!isOver) return;
+function formatTime(sec) {
+    let m = Math.floor(sec / 60); let s = sec % 60;
+    return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+}
 
-    playSound('end'); 
+function updateTimersUI() {
+    const ut = document.getElementById('user-timer'), at = document.getElementById('ai-timer');
+    if (ut && at) {
+        ut.innerText = formatTime(userTimeSec); at.innerText = formatTime(aiTimeSec);
+        
+        // Kimning navbati ekaniga qarab taymer yonadi
+        if ((curGame === 'chess' && chessGame.turn() === 'w') || (curGame === 'checkers' && !isAITurn)) {
+            ut.classList.add('active'); at.classList.remove('active');
+        } else {
+            at.classList.add('active'); ut.classList.remove('active');
+        }
+    }
+}
 
-    let title = "", sub = "", color = "";
-    let isWin = false;
-    let isLose = false;
+function tickTimer() {
+    let isOver = curGame === 'chess' ? chessGame.game_over() : chkGame.isGameOver();
+    if (isOver) { clearInterval(gameTimerInterval); return; }
 
-    if (type === 'chess') {
-        if (gameObj.in_checkmate()) {
-            if (gameObj.turn() === 'b') { 
-                title = "🏆 Checkmate!"; sub = "Siz g'alaba qozondingiz! +20 pts"; color = "var(--gold)"; isWin = true;
-            } else { 
-                title = "💀 Checkmate!"; sub = "Kompyuter g'alaba qozondi. -10 pts"; color = "var(--red)"; isLose = true;
-            }
-        } else { title = "🤝 Draw"; sub = "O'yin durang bilan yakunlandi."; color = "#60a5fa"; }
+    let isAiThinking = curGame === 'chess' ? (chessGame.turn() === 'b') : isAITurn;
+
+    if (isAiThinking) {
+        aiTimeSec--;
+        if (aiTimeSec <= 0) { aiTimeSec = 0; handleTimeout('ai'); }
     } else {
-        let pMoves = gameObj.getMoves(1).length, aiMoves = gameObj.getMoves(-1).length;
-        if (pMoves === 0) { 
-            title = "💀 Yutqazdingiz!"; sub = "Yurish qolmadi yoki donangiz tugadi. -10 pts"; color = "var(--red)"; isLose = true;
-        } else if (aiMoves === 0) { 
-            title = "🏆 G'alaba!"; sub = "Siz AI ni yengdingiz! +20 pts"; color = "var(--gold)"; isWin = true;
-        } else { title = "🤝 Durang"; sub = "O'yin tugadi."; color = "#60a5fa"; }
+        userTimeSec--;
+        if (userTimeSec <= 0) { userTimeSec = 0; handleTimeout('user'); }
+    }
+    updateTimersUI();
+}
+
+function handleTimeout(loser) {
+    clearInterval(gameTimerInterval);
+    checkGameOver(curGame === 'chess' ? chessGame : chkGame, curGame, loser);
+}
+
+function checkGameOver(gameObj, type, timeoutLoser = null) {
+    if (gameTimerInterval) clearInterval(gameTimerInterval); // Vaqtni to'xtatish
+    
+    let isOver = false;
+    let title = "", sub = "", color = "";
+    let isWin = false, isLose = false;
+
+    if (timeoutLoser) {
+        isOver = true;
+        if (timeoutLoser === 'user') { title = "⏱ Vaqt tugadi!"; sub = "Sizda vaqt tugadi. -10 pts"; color = "var(--red)"; isLose = true; } 
+        else { title = "⏱ AI Vaqti tugadi!"; sub = "Kompyuter vaqtni yo'qotdi! +20 pts"; color = "var(--gold)"; isWin = true; }
+    } else {
+        isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
+        if (!isOver) return;
+
+        if (type === 'chess') {
+            if (gameObj.in_checkmate()) {
+                if (gameObj.turn() === 'b') { title = "🏆 Checkmate!"; sub = "Siz g'alaba qozondingiz! +20 pts"; color = "var(--gold)"; isWin = true; } 
+                else { title = "💀 Checkmate!"; sub = "Kompyuter g'alaba qozondi. -10 pts"; color = "var(--red)"; isLose = true; }
+            } else { title = "🤝 Draw"; sub = "O'yin durang bilan yakunlandi."; color = "#60a5fa"; }
+        } else {
+            let pMoves = gameObj.getMoves(1).length, aiMoves = gameObj.getMoves(-1).length;
+            if (pMoves === 0) { title = "💀 Yutqazdingiz!"; sub = "Yurish qolmadi. -10 pts"; color = "var(--red)"; isLose = true; } 
+            else if (aiMoves === 0) { title = "🏆 G'alaba!"; sub = "Siz AI ni yengdingiz! +20 pts"; color = "var(--gold)"; isWin = true; } 
+            else { title = "🤝 Durang"; sub = "O'yin tugadi."; color = "#60a5fa"; }
+        }
     }
 
-    // TANLANGAN O'YIN TURIGA QARAB BALLARNI HISOBLASH (CHESS yoki CHECKERS)
-    if (isWin) {
-        gameStats[type].pts += 20; 
-        gameStats[type].wins += 1;
-    } else if (isLose) {
-        gameStats[type].pts -= 10; 
-        if (gameStats[type].pts < 0) gameStats[type].pts = 0; 
-    }
+    if (isOver) playSound('end'); 
+
+    if (isWin) { gameStats[type].pts += 20; gameStats[type].wins += 1; } 
+    else if (isLose) { gameStats[type].pts -= 10; if (gameStats[type].pts < 0) gameStats[type].pts = 0; }
     
-    // JSON qilib barcha statlarni xotiraga saqlash
     localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats));
     updateStatsUI();
 
-    const wrap = document.getElementById('board-wrap');
+    const wrap = document.getElementById('inner-board-wrap') || document.getElementById('board-wrap');
     const overlay = document.createElement('div'); overlay.className = 'end-overlay';
     overlay.innerHTML = `<div class="end-title" style="color:${color}">${title}</div><div class="end-sub">${sub}</div><button class="end-btn" onclick="startVsAI()">Qayta o'ynash</button>`;
     wrap.appendChild(overlay);
 }
 
+// ==========================================
+// 5. 2-BOSQICHLI TANLASH EKRANI (YANGI)
+// ==========================================
+function renderDifficultySelection() {
+    const wrap = document.getElementById('board-wrap');
+    wrap.className = 'diff-mode-wrap'; wrap.style.cssText = ''; 
+    wrap.innerHTML = `
+        <div style="width: 100%; max-width: 320px;">
+            <div class="diff-title">1. RAQIB DARAJASINI TANLANG</div>
+            <button class="diff-btn easy" onclick="selectDifficulty('easy')">🟢 Oson <span style="font-size:12px; font-weight:500">(Yangi o'rganuvchilar)</span></button>
+            <button class="diff-btn medium" onclick="selectDifficulty('medium')">🟡 O'rta <span style="font-size:12px; font-weight:500">(Tajribalilar)</span></button>
+            <button class="diff-btn hard" onclick="selectDifficulty('hard')">🔴 Qiyin <span style="font-size:12px; font-weight:500">(Haqiqiy strateg)</span></button>
+        </div>
+    `;
+}
+
 window.selectDifficulty = function(level) {
     aiDifficulty = level;
-    document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.diff-btn.${level}`).classList.add('active');
     
-    const startBtn = document.getElementById('final-start-btn');
-    if (startBtn) startBtn.classList.add('active'); 
+    // Qaysi o'yinligiga qarab vaqt nomlari (FIDE standartlari va Shashka)
+    let timeHTML = '';
+    if (curGame === 'chess') {
+        timeHTML = `
+            <button class="diff-btn easy" onclick="selectTime(3)">⚡ 3 Daqiqa <span style="font-size:12px; font-weight:500">(Blitz)</span></button>
+            <button class="diff-btn medium" onclick="selectTime(5)">⏱ 5 Daqiqa <span style="font-size:12px; font-weight:500">(Blitz)</span></button>
+            <button class="diff-btn hard" onclick="selectTime(10)">🕰 10 Daqiqa <span style="font-size:12px; font-weight:500">(Rapid)</span></button>
+        `;
+    } else {
+        timeHTML = `
+            <button class="diff-btn easy" onclick="selectTime(3)">⚡ 3 Daqiqa <span style="font-size:12px; font-weight:500">(Tezkor)</span></button>
+            <button class="diff-btn medium" onclick="selectTime(5)">⏱ 5 Daqiqa <span style="font-size:12px; font-weight:500">(Standart)</span></button>
+            <button class="diff-btn hard" onclick="selectTime(10)">🕰 10 Daqiqa <span style="font-size:12px; font-weight:500">(Klassik)</span></button>
+        `;
+    }
+
+    const wrap = document.getElementById('board-wrap');
+    wrap.innerHTML = `
+        <div style="width: 100%; max-width: 320px;">
+            <div class="diff-title">2. VAQTNI TANLANG</div>
+            ${timeHTML}
+            <button class="start-game-btn active" style="background:transparent; border:1px solid var(--border); margin-top:20px;" onclick="renderDifficultySelection()">⬅️ Darajaga qaytish</button>
+        </div>
+    `;
+}
+
+window.selectTime = function(mins) {
+    gameTimeMins = mins;
+    finalStartGame();
 }
 
 window.finalStartGame = function() {
-    if (!aiDifficulty) return; 
     unlockAudio(); 
-    globalLastMove = null; 
-    isAITurn = false;
+    globalLastMove = null; isAITurn = false;
+    if (gameTimerInterval) clearInterval(gameTimerInterval);
+    
+    // Taymerlarni sozlash
+    userTimeSec = gameTimeMins * 60;
+    aiTimeSec = gameTimeMins * 60;
     
     const wrap = document.getElementById('board-wrap');
-    wrap.innerHTML = '';
-    wrap.className = 'fs-board-wrap'; 
-    wrap.style.cssText = ''; 
+    wrap.innerHTML = `
+        <div class="game-header">
+           <div>🤖 Kompyuter (AI)</div>
+           <div class="timer-box" id="ai-timer">${formatTime(aiTimeSec)}</div>
+        </div>
+        <div class="fs-board-wrap" id="inner-board-wrap"></div>
+        <div class="game-footer">
+           <div>👤 ${userName}</div>
+           <div class="timer-box active" id="user-timer">${formatTime(userTimeSec)}</div>
+        </div>
+    `;
+    wrap.className = 'timer-wrap'; // Tashqi konteyner uslubi
 
     if (curGame === 'chess') {
         if (typeof Chess !== 'undefined') { chessGame = new Chess(); chessSelectedSq = null; renderChessBoard(); }
     } else {
         chkGame.reset(); chkSelectedSq = null; renderCheckersBoard();
     }
+
+    gameTimerInterval = setInterval(tickTimer, 1000); // TAYMERNI ISHGA TUSHIRISH
 }
 
 function startVsAI() {
@@ -1138,19 +1165,7 @@ function startVsAI() {
     const closeX = modal.querySelector('.m-close');
     if(closeX) closeX.setAttribute('onclick', 'closeModal()');
 
-    const wrap = document.getElementById('board-wrap');
-    wrap.className = 'diff-mode-wrap'; 
-    wrap.style.cssText = ''; 
-    wrap.innerHTML = `
-        <div style="width: 100%; max-width: 320px;">
-            <div class="diff-title">RAQIB DARAJASINI TANLANG</div>
-            <button class="diff-btn easy" onclick="selectDifficulty('easy')">🟢 Oson <span style="font-size:12px; font-weight:500">(Yangi o'rganuvchilar)</span></button>
-            <button class="diff-btn medium" onclick="selectDifficulty('medium')">🟡 O'rta <span style="font-size:12px; font-weight:500">(Tajribalilar)</span></button>
-            <button class="diff-btn hard" onclick="selectDifficulty('hard')">🔴 Qiyin <span style="font-size:12px; font-weight:500">(Haqiqiy strateg)</span></button>
-            <button id="final-start-btn" class="start-game-btn" onclick="finalStartGame()">⚡ Boshlash</button>
-        </div>
-    `;
-    aiDifficulty = null; 
+    renderDifficultySelection(); // 1-BOSQICHNI OCHISH
 }
 
 function showMatchModal() { startVsAI(); }
@@ -1165,9 +1180,9 @@ function closeModal() {
         if (icon) { icon.style.display = 'block'; if(icon.nextElementSibling) icon.nextElementSibling.style.display = 'block'; }
         modal.querySelectorAll('button').forEach(btn => btn.style.display = '');
     }
+    if (gameTimerInterval) clearInterval(gameTimerInterval); // Chiqib ketilsa taymer to'xtaydi
 }
 
-// Dastur ishga tushganda UI ni yangilash
 updateStatsUI();
 showScreen('play');
 </script>
