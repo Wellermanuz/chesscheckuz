@@ -541,21 +541,26 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
 const dynamicStyles = document.createElement('style');
 dynamicStyles.innerHTML = `
   .fs-modal .modal { height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; display: flex; flex-direction: column; }
-  .fs-modal .modal > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 16px !important; }
-  
+  /* Modal tarkibini markazlashtirish uchun yordamchi konteyner */
+  .fs-modal .modal > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px !important; gap: 0 !important; }
+
   /* DOSKA STILI */
-  .fs-board-wrap { width: 100%; max-width: 400px; margin: 0 auto; position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.5); }
+  .fs-board-wrap { width: 100%; max-width: 400px; margin: 0 auto; position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; }
   .fs-board-wrap::before { content: ""; display: block; padding-bottom: 100%; }
   .fs-board { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
   .fs-sq { display: flex; align-items: center; justify-content: center; font-size: 9.5vw; line-height: 1; cursor: pointer; position: relative; }
   @media (min-width: 430px) { .fs-sq { font-size: 38px; } }
-  
+
   /* KO'RSATKICHLAR VA MILTILLASH */
   .move-dot { position: absolute; width: 25%; height: 25%; background: rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
   .move-cap { position: absolute; width: 85%; height: 85%; border: 4px solid rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
   @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
   .mandatory-piece { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; }
-  
+
+  /* QIYINCHILIK TANLASH KONTEYNERI (YANGI) */
+  .diff-container { width: 100%; max-width: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding-bottom: 80px; /* Boshlash tugmasi uchun bo'shliq */ }
+  .diff-title { font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--gold); margin-bottom: 24px; font-weight: 900; text-align: center; }
+
   /* QIYINCHILIK TUGMALARI */
   .diff-btn { background: var(--s2); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; width: 100%; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
   .diff-btn:active { transform: scale(0.97); }
@@ -565,7 +570,17 @@ dynamicStyles.innerHTML = `
   .diff-btn.medium:hover { background: rgba(245, 158, 11, 0.1); border-color: var(--gold); }
   .diff-btn.hard { border-color: rgba(239, 68, 68, 0.5); }
   .diff-btn.hard:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--red); }
-  
+
+  /* TANLANGAN DARAJA USLUBLARI (YANGI) */
+  .diff-btn.active.easy { background: rgba(34, 197, 94, 0.2); border-color: var(--green); }
+  .diff-btn.active.medium { background: rgba(245, 158, 11, 0.2); border-color: var(--gold); }
+  .diff-btn.active.hard { background: rgba(239, 68, 68, 0.2); border-color: var(--red); }
+
+  /* BOSHLASH TUGMASI (YANGI) */
+  .start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; max-width: 320px; transition: all 0.3s ease; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 5; display: none; /* Yashirin holatda */ }
+  .start-game-btn.active { display: block; }
+  .start-game-btn:active { transform: translateX(-50%) scale(0.97); }
+
   /* OVERLAY */
   .end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; backdrop-filter: blur(4px); }
   .end-title { font-size: 28px; margin-bottom: 8px; font-weight: 900; line-height: 1.2; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
@@ -583,7 +598,7 @@ if (user && document.querySelector('.pname')) document.querySelector('.pname').i
 
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
-let aiDifficulty = 'easy'; // 'easy', 'medium', 'hard'
+let aiDifficulty = null; // Default holda tanlanmagan
 
 function showScreen(n) {
     SCREENS.forEach(s => {
@@ -944,9 +959,35 @@ function checkGameOver(gameObj, type) {
     wrap.appendChild(overlay);
 }
 
-// Darajani tanlab, keyin doskani chizuvchi funksiya
-window.initGameWithDiff = function(level) {
+// Darajani tanlash funksiyasi (YANGI)
+window.selectDifficulty = function(level) {
     aiDifficulty = level;
+    
+    // Tanlangan tugmaga 'active' klassini qo'shish va boshqalardan olib tashlash
+    document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.diff-btn.${level}`).classList.add('active');
+    
+    // Boshlash tugmasini ko'rsatish
+    const startBtn = document.getElementById('final-start-btn');
+    if (startBtn) startBtn.classList.add('active');
+}
+
+// Boshlash tugmasi uchun funksiya (YANGI)
+window.finalStartGame = function() {
+    if (!aiDifficulty) return; // Daraja tanlanmagan bo'lsa hech narsa qilmaydi
+    
+    const wrap = document.getElementById('board-wrap');
+    
+    // Daraja tanlash ekranini tozalash va default uslublarni qaytarish
+    wrap.innerHTML = '';
+    wrap.className = 'fs-board-wrap';
+    wrap.style.cssText = ''; 
+    
+    // "Boshlash" tugmasini yashirish
+    const startBtn = document.getElementById('final-start-btn');
+    if (startBtn) startBtn.classList.remove('active');
+
+    // O'yinni boshlash
     if (curGame === 'chess') {
         if (typeof Chess !== 'undefined') { chessGame = new Chess(); chessSelectedSq = null; renderChessBoard(); }
     } else {
@@ -962,33 +1003,55 @@ function startVsAI() {
     const checkTab = document.getElementById('gt-check');
     curGame = (checkTab && checkTab.classList.contains('active')) ? 'checkers' : 'chess';
 
+    // Modal sarlavhasini saqlaymiz, lekin pastdagi tarkibni yangilaymiz
     const titleElements = modal.querySelectorAll('.mtitle');
     if(titleElements.length > 0) titleElements[0].innerText = curGame === 'chess' ? "Shaxmat vs AI" : "Shashka vs AI";
 
     const icon = document.getElementById('m-icon');
     if (icon) { icon.style.display = 'none'; if(icon.nextElementSibling) icon.nextElementSibling.style.display = 'none'; }
 
+    // "Create Room" va "Cancel" (pastdagi) tugmalarini yashiramiz
     modal.querySelectorAll('button').forEach(btn => {
-        if (btn.innerText.includes('Create Room')) btn.style.display = 'none';
-        if (btn.innerText.includes('Cancel')) btn.innerText = "Chiqish";
+        if (btn.innerText.includes('Create Room') || btn.innerText.includes('Cancel')) btn.style.display = 'none';
     });
+    
+    // Qizil 'X' tugmasini closeModal ga ulab qo'yamiz (agar ulanmagan bo'lsa)
+    const closeX = modal.querySelector('.m-close');
+    if(closeX) closeX.setAttribute('onclick', 'closeModal()');
 
     // QIYINCHILIK TANLASH EKRANI (Dizaynga moslangan)
     const wrap = document.getElementById('board-wrap');
-    wrap.className = 'fs-board-wrap';
-    wrap.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; box-shadow: none;';
+    wrap.className = 'fs-board-wrap'; // Kvadrat konteynerni ishlatamiz, lekin uni markazga suramiz
+    wrap.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; box-shadow: none; position: relative;'; // absolute tugma uchun position:relative
     wrap.innerHTML = `
-        <div style="width: 100%; max-width: 320px; text-align: center;">
-            <div style="font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--gold); margin-bottom: 24px; font-weight: 900;">RAQIB DARAJASINI TANLANG</div>
-            <button class="diff-btn easy" onclick="initGameWithDiff('easy')">🟢 Oson <span style="font-size:12px; font-weight:500">(Yangi o'rganuvchilar)</span></button>
-            <button class="diff-btn medium" onclick="initGameWithDiff('medium')">🟡 O'rta <span style="font-size:12px; font-weight:500">(Tajribalilar)</span></button>
-            <button class="diff-btn hard" onclick="initGameWithDiff('hard')">🔴 Qiyin <span style="font-size:12px; font-weight:500">(Haqiqiy strateg)</span></button>
+        <div class="diff-container">
+            <div class="diff-title">RAQIB DARAJASINI TANLANG</div>
+            <button class="diff-btn easy" onclick="selectDifficulty('easy')">🟢 Oson <span style="font-size:12px; font-weight:500">(Yangi o'rganuvchilar)</span></button>
+            <button class="diff-btn medium" onclick="selectDifficulty('medium')">🟡 O'rta <span style="font-size:12px; font-weight:500">(Tajribalilar)</span></button>
+            <button class="diff-btn hard" onclick="selectDifficulty('hard')">🔴 Qiyin <span style="font-size:12px; font-weight:500">(Haqiqiy strateg)</span></button>
         </div>
+        <button id="final-start-btn" class="start-game-btn" onclick="finalStartGame()">⚡ Boshlash</button>
     `;
+    
+    // Darajani null ga reset qilamiz, yangi o'yin uchun
+    aiDifficulty = null;
 }
 
 function showMatchModal() { startVsAI(); }
-function closeModal() { document.getElementById('match-modal').classList.remove('open', 'fs-modal'); }
+
+function closeModal() { 
+    const modal = document.getElementById('match-modal');
+    if(modal) {
+        modal.classList.remove('open', 'fs-modal');
+        // Yopilganda "Searching for opponent" tarkibini qayta tiklash
+        const titleElements = modal.querySelectorAll('.mtitle');
+        if(titleElements.length > 0) titleElements[0].innerText = "Finding Match...";
+        const icon = document.getElementById('m-icon');
+        if (icon) { icon.style.display = 'block'; if(icon.nextElementSibling) icon.nextElementSibling.style.display = 'block'; }
+        // Default tugmalarni ko'rsatish
+        modal.querySelectorAll('button').forEach(btn => btn.style.display = '');
+    }
+}
 
 showScreen('play');
 </script>
