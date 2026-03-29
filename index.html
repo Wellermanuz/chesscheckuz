@@ -550,17 +550,21 @@ dynamicStyles.innerHTML = `
   .fs-sq { display: flex; align-items: center; justify-content: center; font-size: 9.5vw; line-height: 1; cursor: pointer; position: relative; }
   @media (min-width: 430px) { .fs-sq { font-size: 38px; } }
   
-  /* KO'RSATKICHLAR */
+  /* KO'RSATKICHLAR VA MILTILLASH */
   .move-dot { position: absolute; width: 25%; height: 25%; background: rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
   .move-cap { position: absolute; width: 85%; height: 85%; border: 4px solid rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
-  
-  /* MAJBURIY URISH (QIZIL MILTILLASH) */
-  @keyframes pulse-red { 
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 
-      70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
-  }
+  @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
   .mandatory-piece { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; }
+  
+  /* QIYINCHILIK TUGMALARI */
+  .diff-btn { background: var(--s2); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; width: 100%; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+  .diff-btn:active { transform: scale(0.97); }
+  .diff-btn.easy { border-color: rgba(34, 197, 94, 0.5); }
+  .diff-btn.easy:hover { background: rgba(34, 197, 94, 0.1); border-color: var(--green); }
+  .diff-btn.medium { border-color: rgba(245, 158, 11, 0.5); }
+  .diff-btn.medium:hover { background: rgba(245, 158, 11, 0.1); border-color: var(--gold); }
+  .diff-btn.hard { border-color: rgba(239, 68, 68, 0.5); }
+  .diff-btn.hard:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--red); }
   
   /* OVERLAY */
   .end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; backdrop-filter: blur(4px); }
@@ -579,6 +583,7 @@ if (user && document.querySelector('.pname')) document.querySelector('.pname').i
 
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
+let aiDifficulty = 'easy'; // 'easy', 'medium', 'hard'
 
 function showScreen(n) {
     SCREENS.forEach(s => {
@@ -611,11 +616,34 @@ function setCT(btn) {
 }
 
 // ==========================================
-// 2. SHAXMAT MOTOR (CHESS)
+// 2. SHAXMAT MOTOR & MINIMAX AI
 // ==========================================
 let chessGame;
 try { chessGame = new Chess(); } catch (e) { console.error("Chess.js yuklanmadi"); }
 let chessSelectedSq = null;
+
+const chessPieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
+function evalChess() {
+    let val = 0;
+    chessGame.board().forEach(row => {
+        row.forEach(p => { if (p) val += chessPieceValues[p.type] * (p.color === 'w' ? 1 : -1); });
+    });
+    return val;
+}
+
+function minimaxChess(depth, alpha, beta, isMax) {
+    if (depth === 0 || chessGame.game_over()) return evalChess();
+    let moves = chessGame.moves();
+    if (isMax) {
+        let max = -Infinity;
+        for (let m of moves) { chessGame.move(m); max = Math.max(max, minimaxChess(depth-1, alpha, beta, false)); chessGame.undo(); alpha = Math.max(alpha, max); if (beta <= alpha) break; }
+        return max;
+    } else {
+        let min = Infinity;
+        for (let m of moves) { chessGame.move(m); min = Math.min(min, minimaxChess(depth-1, alpha, beta, true)); chessGame.undo(); beta = Math.min(beta, min); if (beta <= alpha) break; }
+        return min;
+    }
+}
 
 function renderChessBoard() {
     const wrap = document.getElementById('board-wrap');
@@ -658,7 +686,7 @@ function renderChessBoard() {
                     if (validTargets.includes(coords)) {
                         chessGame.move({ from: chessSelectedSq, to: coords, promotion: 'q' });
                         chessSelectedSq = null; renderChessBoard(); checkGameOver(chessGame, 'chess');
-                        if (!chessGame.game_over()) setTimeout(makeChessAIMove, 500);
+                        if (!chessGame.game_over()) setTimeout(makeChessAIMove, 100);
                     } else {
                         chessSelectedSq = (cell && cell.color === 'w') ? coords : null;
                         renderChessBoard();
@@ -672,15 +700,28 @@ function renderChessBoard() {
 }
 
 function makeChessAIMove() {
-    const moves = chessGame.moves();
-    if (moves.length > 0) {
-        chessGame.move(moves[Math.floor(Math.random() * moves.length)]);
-        renderChessBoard(); checkGameOver(chessGame, 'chess');
+    let moves = chessGame.moves();
+    if (moves.length === 0) return;
+    
+    let bestMove = moves[Math.floor(Math.random() * moves.length)];
+    if (aiDifficulty !== 'easy') {
+        let bestVal = Infinity; // AI (Qora) minusga intiladi
+        let depth = aiDifficulty === 'medium' ? 1 : 2; // Hard = 2 qadam oldinni hisoblaydi
+        
+        for (let i = 0; i < moves.length; i++) {
+            chessGame.move(moves[i]);
+            let boardVal = minimaxChess(depth - 1, -Infinity, Infinity, true);
+            chessGame.undo();
+            if (boardVal < bestVal) { bestVal = boardVal; bestMove = moves[i]; }
+        }
     }
+    
+    chessGame.move(bestMove);
+    renderChessBoard(); checkGameOver(chessGame, 'chess');
 }
 
 // ==========================================
-// 3. XALQARO/RUS SHASHKA MOTORI (YANGI!)
+// 3. SHASHKA MOTOR & MINIMAX AI
 // ==========================================
 class CheckersEngine {
     constructor() { this.reset(); }
@@ -695,99 +736,98 @@ class CheckersEngine {
             [0,1,0,1,0,1,0,1],
             [1,0,1,0,1,0,1,0]
         ];
-        this.turn = 1; // 1=Oqlar, -1=Qoralar
-        this.multiJumpSq = null; // Zanjirli urish davom etayotgan tosh koordinatasi
+        this.turn = 1; 
+        this.multiJumpSq = null;
     }
-
+    clone() {
+        let c = new CheckersEngine();
+        c.board = this.board.map(r => [...r]);
+        c.turn = this.turn;
+        c.multiJumpSq = this.multiJumpSq ? {r: this.multiJumpSq.r, c: this.multiJumpSq.c} : null;
+        return c;
+    }
     getMoves(player, specificSq = null) {
         let moves = [], jumps = [];
         for (let r=0; r<8; r++) {
             for (let c=0; c<8; c++) {
                 if (this.board[r][c] * player > 0) {
-                    // Agar zanjirli urish bo'lsa, faqat o'sha tosh ishlaydi
                     if (specificSq && (specificSq.r !== r || specificSq.c !== c)) continue;
-
                     let isKing = Math.abs(this.board[r][c]) === 2;
-                    let dirs = [[1,-1],[1,1],[-1,-1],[-1,1]]; // Urish barcha tomonga mumkin
+                    let dirs = [[1,-1],[1,1],[-1,-1],[-1,1]]; 
 
-                    // 1. URISHLARNI (JUMPS) QIDIRISH
                     for (let d of dirs) {
-                        let jumped = null;
-                        let nr = r + d[0], nc = c + d[1];
-                        
+                        let jumped = null, nr = r + d[0], nc = c + d[1];
                         while (nr>=0 && nr<8 && nc>=0 && nc<8) {
                             let p = this.board[nr][nc];
                             if (p !== 0) {
-                                if (p * player > 0) break; // O'zimizning tosh
-                                if (p * player < 0) {
-                                    if (jumped) break; // Ikkita tosh ustidan sakrab o'tolmaydi
-                                    jumped = {r: nr, c: nc};
-                                }
+                                if (p * player > 0) break;
+                                if (p * player < 0) { if (jumped) break; jumped = {r: nr, c: nc}; }
                             } else if (jumped) {
-                                // Urish mumkin bo'lgan joy topildi
                                 jumps.push({from: {r,c}, to: {r:nr, c:nc}, jump: jumped});
-                                if (!isKing) break; // Oddiy tosh darhol orqasiga tushadi
-                            } else if (!isKing) {
-                                break; // Oddiy tosh urishdan oldin uzoqqa siljiy olmaydi
-                            }
+                                if (!isKing) break; 
+                            } else if (!isKing) break; 
                             nr += d[0]; nc += d[1];
                         }
                     }
 
-                    // 2. ODDIY YURISHLARNI QIDIRISH (Faqat zanjir bo'lmasa)
                     if (!specificSq) {
                         if (!isKing) {
-                            // Oddiy tosh faqat oldinga yuradi
                             let fDirs = player === 1 ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]];
                             for (let d of fDirs) {
                                 let nr = r+d[0], nc = c+d[1];
-                                if (nr>=0 && nr<8 && nc>=0 && nc<8 && this.board[nr][nc] === 0) {
-                                    moves.push({from:{r,c}, to:{r:nr, c:nc}});
-                                }
+                                if (nr>=0 && nr<8 && nc>=0 && nc<8 && this.board[nr][nc] === 0) moves.push({from:{r,c}, to:{r:nr, c:nc}});
                             }
                         } else {
-                            // Uchuvchi Damka (Flying King) bo'sh joygacha uchadi
                             for (let d of dirs) {
                                 let nr = r+d[0], nc = c+d[1];
-                                while (nr>=0 && nr<8 && nc>=0 && nc<8 && this.board[nr][nc] === 0) {
-                                    moves.push({from:{r,c}, to:{r:nr, c:nc}});
-                                    nr += d[0]; nc += d[1];
-                                }
+                                while (nr>=0 && nr<8 && nc>=0 && nc<8 && this.board[nr][nc] === 0) { moves.push({from:{r,c}, to:{r:nr, c:nc}}); nr += d[0]; nc += d[1]; }
                             }
                         }
                     }
                 }
             }
         }
-        // Agar urish imkoni bo'lsa, oddiy yurishlar bekor qilinadi (majburiy urish)
         return jumps.length > 0 ? jumps : (specificSq ? [] : moves); 
     }
-
     move(m) {
         let p = this.board[m.from.r][m.from.c];
         this.board[m.from.r][m.from.c] = 0;
-        if (m.jump) this.board[m.jump.r][m.jump.c] = 0; // Toshni yeyish
-        
-        // Damkaga chiqish tekshiruvi
-        if (Math.abs(p) === 1 && ((p === 1 && m.to.r === 0) || (p === -1 && m.to.r === 7))) {
-            p *= 2; 
-        }
+        if (m.jump) this.board[m.jump.r][m.jump.c] = 0;
+        if (Math.abs(p) === 1 && ((p === 1 && m.to.r === 0) || (p === -1 && m.to.r === 7))) p *= 2; 
         this.board[m.to.r][m.to.c] = p;
 
-        // Agar tosh urgandan keyin yana urish imkoni bo'lsa (Zanjirli urish)
         if (m.jump) {
             let nextJumps = this.getMoves(this.turn, m.to);
-            if (nextJumps.length > 0) {
-                this.multiJumpSq = m.to; // Navbat o'zgarmaydi!
-                return;
-            }
+            if (nextJumps.length > 0) { this.multiJumpSq = m.to; return; }
         }
-        
-        this.multiJumpSq = null;
-        this.turn *= -1; // Navbatni raqibga berish
+        this.multiJumpSq = null; this.turn *= -1; 
     }
-    
     isGameOver() { return this.getMoves(1).length === 0 || this.getMoves(-1).length === 0; }
+}
+
+function evalCheckers(board) {
+    let val = 0;
+    for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+        if (board[r][c] === 1) val += 10; else if (board[r][c] === 2) val += 30;
+        else if (board[r][c] === -1) val -= 10; else if (board[r][c] === -2) val -= 30;
+    }
+    return val;
+}
+
+function minimaxCheckers(game, depth, alpha, beta, isMax) {
+    if (depth === 0 || game.isGameOver()) return evalCheckers(game.board);
+    let moves = game.getMoves(game.turn, game.multiJumpSq);
+    if (moves.length === 0) return evalCheckers(game.board);
+    
+    if (isMax) {
+        let max = -Infinity;
+        for (let m of moves) { let clone = game.clone(); clone.move(m); max = Math.max(max, minimaxCheckers(clone, depth-1, alpha, beta, clone.turn===1)); alpha = Math.max(alpha, max); if (beta <= alpha) break; }
+        return max;
+    } else {
+        let min = Infinity;
+        for (let m of moves) { let clone = game.clone(); clone.move(m); min = Math.min(min, minimaxCheckers(clone, depth-1, alpha, beta, clone.turn===1)); beta = Math.min(beta, min); if (beta <= alpha) break; }
+        return min;
+    }
 }
 
 let chkGame = new CheckersEngine();
@@ -799,12 +839,10 @@ function renderCheckersBoard() {
     wrap.innerHTML = ''; wrap.className = 'fs-board-wrap'; wrap.style.cssText = ''; 
     const boardEl = document.createElement('div'); boardEl.className = 'fs-board';
 
-    // Barcha mumkin bo'lgan yurishlarni tekshiramiz
     let allValidMoves = chkGame.getMoves(1, chkGame.multiJumpSq);
     let isMandatoryJump = allValidMoves.length > 0 && allValidMoves[0].jump;
     let mandatoryFroms = isMandatoryJump ? allValidMoves.map(m => m.from.r + ',' + m.from.c) : [];
 
-    // Tanlangan toshning yurishlari
     const validMoves = chkSelectedSq ? allValidMoves.filter(m => m.from.r === chkSelectedSq.r && m.from.c === chkSelectedSq.c) : [];
     const validTargets = validMoves.map(m => m.to.r + ',' + m.to.c);
 
@@ -814,7 +852,6 @@ function renderCheckersBoard() {
                 const sq = document.createElement('div');
                 sq.className = 'fs-sq';
                 sq.style.backgroundColor = (r + c) % 2 === 0 ? '#e8d5b7' : '#7c5c3a';
-
                 if (chkSelectedSq && chkSelectedSq.r === r && chkSelectedSq.c === c) sq.style.backgroundColor = '#f59e0b';
 
                 let pVal = chkGame.board[r][c];
@@ -823,14 +860,8 @@ function renderCheckersBoard() {
                     pEl.style.cssText = `width:75%;height:75%;border-radius:50%;box-shadow:0 4px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:24px;z-index:3; transition: all 0.2s;`;
                     pEl.style.background = pVal > 0 ? '#f8fafc' : '#1e293b';
                     pEl.style.border = pVal > 0 ? '3px solid #cbd5e1' : '3px solid #0f172a';
-                    
                     if (Math.abs(pVal) === 2) pEl.innerHTML = '👑';
-                    
-                    // Agar bu tosh urishi shart bo'lsa va bu o'yinchining toshi bo'lsa (qizil miltillash qo'shamiz)
-                    if (pVal > 0 && mandatoryFroms.includes(r + ',' + c)) {
-                        pEl.classList.add('mandatory-piece');
-                    }
-                    
+                    if (pVal > 0 && mandatoryFroms.includes(r + ',' + c)) pEl.classList.add('mandatory-piece');
                     sq.appendChild(pEl);
                 }
 
@@ -841,35 +872,17 @@ function renderCheckersBoard() {
                 }
 
                 sq.onclick = () => {
-                    if (chkGame.turn === -1 || chkGame.isGameOver()) return; // AI navbati
-                    
+                    if (chkGame.turn === -1 || chkGame.isGameOver()) return; 
                     if (!chkSelectedSq) {
-                        // Agar urish shart bo'lsa, faqat "qizil" toshlarni tanlay oladi
-                        if (pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) {
-                            chkSelectedSq = {r, c}; renderCheckersBoard();
-                        }
+                        if (pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) { chkSelectedSq = {r, c}; renderCheckersBoard(); }
                     } else {
                         let move = validMoves.filter(m => m.to.r === r && m.to.c === c)[0];
                         if (move) {
-                            chkGame.move(move); 
-                            chkSelectedSq = null; 
-                            renderCheckersBoard(); 
-                            checkGameOver(chkGame, 'checkers');
-                            
-                            // Agar navbat AI ga o'tgan bo'lsa yoki o'yinchi zanjirni davom ettirishi kerak bo'lsa
-                            if (!chkGame.isGameOver()) {
-                                if (chkGame.turn === -1) {
-                                    setTimeout(makeChkAIMove, 600);
-                                }
-                                // Agar o'yinchi zanjirda bo'lsa, o'zi davom ettiradi
-                            }
+                            chkGame.move(move); chkSelectedSq = null; renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
+                            if (!chkGame.isGameOver() && chkGame.turn === -1) setTimeout(makeChkAIMove, 100);
                         } else {
-                            // Tanlovni bekor qilish (faqat zanjirda bo'lmasa ruxsat beriladi)
-                            if (!chkGame.multiJumpSq && pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) {
-                                chkSelectedSq = {r, c}; 
-                            } else if (!chkGame.multiJumpSq) {
-                                chkSelectedSq = null;
-                            }
+                            if (!chkGame.multiJumpSq && pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) chkSelectedSq = {r, c}; 
+                            else if (!chkGame.multiJumpSq) chkSelectedSq = null;
                             renderCheckersBoard();
                         }
                     }
@@ -881,26 +894,32 @@ function renderCheckersBoard() {
     wrap.appendChild(boardEl);
 }
 
-// AI Zanjirli urishni oxirigacha amalga oshirishi uchun rekursiv funksiya
 function makeChkAIMove() {
     if (chkGame.turn === 1 || chkGame.isGameOver()) return;
-
     let moves = chkGame.getMoves(-1, chkGame.multiJumpSq);
-    if (moves.length > 0) {
-        let move = moves[Math.floor(Math.random() * moves.length)]; // AI tasodifiy yuradi
-        chkGame.move(move);
-        renderCheckersBoard(); 
-        checkGameOver(chkGame, 'checkers');
+    if (moves.length === 0) return;
+
+    let bestMove = moves[Math.floor(Math.random() * moves.length)];
+    if (aiDifficulty !== 'easy') {
+        let bestVal = Infinity; 
+        let depth = aiDifficulty === 'medium' ? 1 : 3; // Hard = 3 qadam oldinni hisoblaydi (shashkada bu tez ishlaydi)
         
-        // Agar AI yana urishi kerak bo'lsa
-        if (chkGame.turn === -1 && !chkGame.isGameOver()) {
-            setTimeout(makeChkAIMove, 600);
+        for (let i = 0; i < moves.length; i++) {
+            let clone = chkGame.clone();
+            clone.move(moves[i]);
+            let val = minimaxCheckers(clone, depth - 1, -Infinity, Infinity, clone.turn === 1);
+            if (val < bestVal) { bestVal = val; bestMove = moves[i]; }
         }
     }
+
+    chkGame.move(bestMove);
+    renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
+    
+    if (chkGame.turn === -1 && !chkGame.isGameOver()) setTimeout(makeChkAIMove, 400); // Zanjirli urish davomi
 }
 
 // ==========================================
-// 4. UMUMIY O'YIN BOSHQARUVI
+// 4. O'YIN BOSHQARUVI VA QIYINCHILIK TANLASH
 // ==========================================
 function checkGameOver(gameObj, type) {
     let isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
@@ -925,6 +944,16 @@ function checkGameOver(gameObj, type) {
     wrap.appendChild(overlay);
 }
 
+// Darajani tanlab, keyin doskani chizuvchi funksiya
+window.initGameWithDiff = function(level) {
+    aiDifficulty = level;
+    if (curGame === 'chess') {
+        if (typeof Chess !== 'undefined') { chessGame = new Chess(); chessSelectedSq = null; renderChessBoard(); }
+    } else {
+        chkGame.reset(); chkSelectedSq = null; renderCheckersBoard();
+    }
+}
+
 function startVsAI() {
     const modal = document.getElementById('match-modal');
     if (!modal) return;
@@ -944,11 +973,18 @@ function startVsAI() {
         if (btn.innerText.includes('Cancel')) btn.innerText = "Chiqish";
     });
 
-    if (curGame === 'chess') {
-        if (typeof Chess !== 'undefined') { chessGame = new Chess(); chessSelectedSq = null; renderChessBoard(); }
-    } else {
-        chkGame.reset(); chkSelectedSq = null; renderCheckersBoard();
-    }
+    // QIYINCHILIK TANLASH EKRANI (Dizaynga moslangan)
+    const wrap = document.getElementById('board-wrap');
+    wrap.className = 'fs-board-wrap';
+    wrap.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; box-shadow: none;';
+    wrap.innerHTML = `
+        <div style="width: 100%; max-width: 320px; text-align: center;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--gold); margin-bottom: 24px; font-weight: 900;">RAQIB DARAJASINI TANLANG</div>
+            <button class="diff-btn easy" onclick="initGameWithDiff('easy')">🟢 Oson <span style="font-size:12px; font-weight:500">(Yangi o'rganuvchilar)</span></button>
+            <button class="diff-btn medium" onclick="initGameWithDiff('medium')">🟡 O'rta <span style="font-size:12px; font-weight:500">(Tajribalilar)</span></button>
+            <button class="diff-btn hard" onclick="initGameWithDiff('hard')">🔴 Qiyin <span style="font-size:12px; font-weight:500">(Haqiqiy strateg)</span></button>
+        </div>
+    `;
 }
 
 function showMatchModal() { startVsAI(); }
@@ -956,6 +992,5 @@ function closeModal() { document.getElementById('match-modal').classList.remove(
 
 showScreen('play');
 </script>
-
 </body>
 </html>
