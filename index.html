@@ -575,7 +575,7 @@ dynamicStyles.innerHTML = `
   .start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
   .start-game-btn:active { transform: scale(0.97); }
 
-  /* TAYMER VA O'YIN KONTEYNERI (YANGI) */
+  /* TAYMER VA O'YIN KONTEYNERI */
   .timer-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; }
   .game-header, .game-footer { display: flex; justify-content: space-between; align-items: center; font-family: 'Rajdhani', sans-serif; color: var(--text); font-size: 18px; font-weight: 700; background: var(--s2); padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
   .timer-box { background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 18px; letter-spacing: 1px; color: #fff; transition: 0.3s; border: 1px solid transparent; }
@@ -621,10 +621,10 @@ if (user && document.querySelector('.pname')) document.querySelector('.pname').i
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
 let aiDifficulty = null; 
-let gameTimeMins = null; // Tanlangan vaqt
+let gameTimeMins = null; 
 let globalLastMove = null; 
 
-// --- TAYMER O'ZGARUVCHILARI (YANGI) ---
+// --- TAYMER O'ZGARUVCHILARI ---
 let gameTimerInterval = null;
 let userTimeSec = 0;
 let aiTimeSec = 0;
@@ -708,7 +708,7 @@ function minimaxChess(depth, alpha, beta, isMax) {
 }
 
 function renderChessBoard() {
-    const wrap = document.getElementById('inner-board-wrap'); // TAYMER UCHUN ICHKI KONTEYNER
+    const wrap = document.getElementById('inner-board-wrap'); 
     if (!wrap || !chessGame) return;
     wrap.innerHTML = ''; wrap.className = 'fs-board-wrap'; wrap.style.cssText = ''; 
     const boardEl = document.createElement('div'); boardEl.className = 'fs-board';
@@ -751,11 +751,13 @@ function renderChessBoard() {
                         playSound(moveObj.captured ? 'capture' : 'move'); 
                         globalLastMove = { from: moveObj.from, to: moveObj.to }; 
                         chessSelectedSq = null; 
+                        
                         renderChessBoard(); 
-                        checkGameOver(chessGame, 'chess');
+                        checkGameOver(chessGame, 'chess'); // XATO SHU YERDA EDI (TUZAILDI)
                         
                         if (!chessGame.game_over()) {
-                            isAITurn = true; updateTimersUI(); // Taymerni darhol o'zgartirish
+                            isAITurn = true; 
+                            updateTimersUI(); 
                             setTimeout(makeChessAIMove, 800); 
                         }
                     } else {
@@ -790,6 +792,10 @@ function makeChessAIMove() {
     let executedMove = chessGame.move(bestMove.san);
     playSound(executedMove.captured ? 'capture' : 'move'); 
     globalLastMove = { from: executedMove.from, to: executedMove.to }; 
+    
+    // Vizual qulaylik: AI o'ylagani uchun taymeridan -1 sekund majburan olinadi
+    if (aiTimeSec > 0) aiTimeSec -= 1;
+
     isAITurn = false; 
     renderChessBoard(); 
     checkGameOver(chessGame, 'chess');
@@ -890,7 +896,7 @@ let chkGame = new CheckersEngine();
 let chkSelectedSq = null;
 
 function renderCheckersBoard() {
-    const wrap = document.getElementById('inner-board-wrap'); // TAYMER UCHUN ICHKI KONTEYNER
+    const wrap = document.getElementById('inner-board-wrap'); 
     if (!wrap) return;
     wrap.innerHTML = ''; wrap.className = 'fs-board-wrap'; wrap.style.cssText = ''; 
     const boardEl = document.createElement('div'); boardEl.className = 'fs-board';
@@ -936,7 +942,10 @@ function renderCheckersBoard() {
                         let move = validMoves.filter(m => m.to.r === r && m.to.c === c)[0];
                         if (move) {
                             chkGame.move(move); playSound(move.jump ? 'capture' : 'move'); globalLastMove = { from: move.from, to: move.to }; 
-                            chkSelectedSq = null; renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
+                            chkSelectedSq = null; 
+                            
+                            renderCheckersBoard(); 
+                            checkGameOver(chkGame, 'checkers'); // XATO SHU YERDA EDI
                             
                             if (!chkGame.isGameOver() && chkGame.turn === -1) {
                                 isAITurn = true; updateTimersUI();
@@ -972,9 +981,19 @@ function makeChkAIMove() {
     }
 
     chkGame.move(bestMove); playSound(bestMove.jump ? 'capture' : 'move'); globalLastMove = { from: bestMove.from, to: bestMove.to }; 
-    renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
     
-    if (chkGame.turn === -1 && !chkGame.isGameOver()) { setTimeout(makeChkAIMove, 800); } else { isAITurn = false; updateTimersUI(); }
+    // AI vaqtidan -1 soniya kamaytiramiz
+    if (aiTimeSec > 0) aiTimeSec -= 1;
+
+    renderCheckersBoard(); 
+    checkGameOver(chkGame, 'checkers');
+    
+    if (chkGame.turn === -1 && !chkGame.isGameOver()) { 
+        setTimeout(makeChkAIMove, 800); 
+    } else { 
+        isAITurn = false; 
+        updateTimersUI(); 
+    }
 }
 
 // ==========================================
@@ -990,7 +1009,6 @@ function updateTimersUI() {
     if (ut && at) {
         ut.innerText = formatTime(userTimeSec); at.innerText = formatTime(aiTimeSec);
         
-        // Kimning navbati ekaniga qarab taymer yonadi
         if ((curGame === 'chess' && chessGame.turn() === 'w') || (curGame === 'checkers' && !isAITurn)) {
             ut.classList.add('active'); at.classList.remove('active');
         } else {
@@ -1000,8 +1018,12 @@ function updateTimersUI() {
 }
 
 function tickTimer() {
+    // 1-QADAM: O'yin qoidalar bo'yicha tugaganligini tekshirish
     let isOver = curGame === 'chess' ? chessGame.game_over() : chkGame.isGameOver();
-    if (isOver) { clearInterval(gameTimerInterval); return; }
+    if (isOver) { 
+        clearInterval(gameTimerInterval); 
+        return; 
+    }
 
     let isAiThinking = curGame === 'chess' ? (chessGame.turn() === 'b') : isAITurn;
 
@@ -1020,9 +1042,8 @@ function handleTimeout(loser) {
     checkGameOver(curGame === 'chess' ? chessGame : chkGame, curGame, loser);
 }
 
+// BU YERDA XATO BOR EDI - TAYMERNI TO'XTATISH FUNTKSIYASI TUZATILDI
 function checkGameOver(gameObj, type, timeoutLoser = null) {
-    if (gameTimerInterval) clearInterval(gameTimerInterval); // Vaqtni to'xtatish
-    
     let isOver = false;
     let title = "", sub = "", color = "";
     let isWin = false, isLose = false;
@@ -1033,7 +1054,7 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
         else { title = "⏱ AI Vaqti tugadi!"; sub = "Kompyuter vaqtni yo'qotdi! +20 pts"; color = "var(--gold)"; isWin = true; }
     } else {
         isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
-        if (!isOver) return;
+        if (!isOver) return; // MUHIM YECHIM: Agar o'yin tugamagan bo'lsa, funksiya shu yerdan orqaga qaytadi. Taymer o'chmaydi!
 
         if (type === 'chess') {
             if (gameObj.in_checkmate()) {
@@ -1048,7 +1069,10 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
         }
     }
 
-    if (isOver) playSound('end'); 
+    // TAYMERNI FAQAT O'YIN TUGAGANDAGINA TO'XTATAMIZ!
+    if (gameTimerInterval) clearInterval(gameTimerInterval); 
+    
+    playSound('end'); 
 
     if (isWin) { gameStats[type].pts += 20; gameStats[type].wins += 1; } 
     else if (isLose) { gameStats[type].pts -= 10; if (gameStats[type].pts < 0) gameStats[type].pts = 0; }
@@ -1063,7 +1087,7 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
 }
 
 // ==========================================
-// 5. 2-BOSQICHLI TANLASH EKRANI (YANGI)
+// 5. 2-BOSQICHLI TANLASH EKRANI
 // ==========================================
 function renderDifficultySelection() {
     const wrap = document.getElementById('board-wrap');
@@ -1080,8 +1104,6 @@ function renderDifficultySelection() {
 
 window.selectDifficulty = function(level) {
     aiDifficulty = level;
-    
-    // Qaysi o'yinligiga qarab vaqt nomlari (FIDE standartlari va Shashka)
     let timeHTML = '';
     if (curGame === 'chess') {
         timeHTML = `
@@ -1117,7 +1139,6 @@ window.finalStartGame = function() {
     globalLastMove = null; isAITurn = false;
     if (gameTimerInterval) clearInterval(gameTimerInterval);
     
-    // Taymerlarni sozlash
     userTimeSec = gameTimeMins * 60;
     aiTimeSec = gameTimeMins * 60;
     
@@ -1133,7 +1154,7 @@ window.finalStartGame = function() {
            <div class="timer-box active" id="user-timer">${formatTime(userTimeSec)}</div>
         </div>
     `;
-    wrap.className = 'timer-wrap'; // Tashqi konteyner uslubi
+    wrap.className = 'timer-wrap'; 
 
     if (curGame === 'chess') {
         if (typeof Chess !== 'undefined') { chessGame = new Chess(); chessSelectedSq = null; renderChessBoard(); }
@@ -1141,7 +1162,7 @@ window.finalStartGame = function() {
         chkGame.reset(); chkSelectedSq = null; renderCheckersBoard();
     }
 
-    gameTimerInterval = setInterval(tickTimer, 1000); // TAYMERNI ISHGA TUSHIRISH
+    gameTimerInterval = setInterval(tickTimer, 1000); // TAYMER ISHGA TUSHDI
 }
 
 function startVsAI() {
@@ -1165,7 +1186,7 @@ function startVsAI() {
     const closeX = modal.querySelector('.m-close');
     if(closeX) closeX.setAttribute('onclick', 'closeModal()');
 
-    renderDifficultySelection(); // 1-BOSQICHNI OCHISH
+    renderDifficultySelection(); 
 }
 
 function showMatchModal() { startVsAI(); }
@@ -1180,7 +1201,7 @@ function closeModal() {
         if (icon) { icon.style.display = 'block'; if(icon.nextElementSibling) icon.nextElementSibling.style.display = 'block'; }
         modal.querySelectorAll('button').forEach(btn => btn.style.display = '');
     }
-    if (gameTimerInterval) clearInterval(gameTimerInterval); // Chiqib ketilsa taymer to'xtaydi
+    if (gameTimerInterval) clearInterval(gameTimerInterval); // Chiqqanda taymer o'chadi
 }
 
 updateStatsUI();
