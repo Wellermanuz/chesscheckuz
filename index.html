@@ -540,52 +540,21 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
 // --- Dinamik Fullscreen va UI elementlari uchun CSS ---
 const dynamicStyles = document.createElement('style');
 dynamicStyles.innerHTML = `
-  /* Modalni to'liq ekranga yoyish */
   .fs-modal .modal { height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; display: flex; flex-direction: column; }
   .fs-modal .modal > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 16px !important; }
   
-  /* SHAXMAT DOSKASINI 100% KVADRAT QILISH (TUZATILDI) */
-  .fs-board-wrap { 
-    width: 100%; 
-    max-width: 400px; 
-    margin: 0 auto; 
-    position: relative; 
-    border-radius: 6px; 
-    overflow: hidden; 
-    box-shadow: 0 4px 25px rgba(0,0,0,0.5); 
-  }
-  /* Kvadratni ushlab turuvchi maxsus qoida */
-  .fs-board-wrap::before { 
-    content: ""; 
-    display: block; 
-    padding-bottom: 100%; 
-  }
-  .fs-board { 
-    position: absolute; 
-    top: 0; left: 0; 
-    width: 100%; height: 100%; 
-    display: grid; 
-    grid-template-columns: repeat(8, 1fr); 
-    grid-template-rows: repeat(8, 1fr); 
-  }
-  
-  /* Kataklar va Donachalar */
-  .fs-sq { 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    font-size: 9.5vw; /* Donalar sal kattalashtirildi */
-    line-height: 1;
-    cursor: pointer; 
-    position: relative; 
-  }
+  /* DOSKA STILI */
+  .fs-board-wrap { width: 100%; max-width: 400px; margin: 0 auto; position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.5); }
+  .fs-board-wrap::before { content: ""; display: block; padding-bottom: 100%; }
+  .fs-board { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
+  .fs-sq { display: flex; align-items: center; justify-content: center; font-size: 9.5vw; line-height: 1; cursor: pointer; position: relative; }
   @media (min-width: 430px) { .fs-sq { font-size: 38px; } }
   
-  /* Yurish ko'rsatkichlari (Yashil nuqtalar) */
+  /* KO'RSATKICHLAR */
   .move-dot { position: absolute; width: 25%; height: 25%; background: rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
   .move-cap { position: absolute; width: 85%; height: 85%; border: 4px solid rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
   
-  /* O'yin tugagandagi Overlay */
+  /* OVERLAY */
   .end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; backdrop-filter: blur(4px); }
   .end-title { font-size: 28px; margin-bottom: 8px; font-weight: 900; line-height: 1.2; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
   .end-sub { font-size: 14px; color: var(--text); margin-bottom: 24px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
@@ -594,34 +563,25 @@ dynamicStyles.innerHTML = `
 `;
 document.head.appendChild(dynamicStyles);
 
-// --- 1. ASOSIY NAVIGATSIYA VA TELEGRAM ---
+// --- 1. ASOSIY NAVIGATSIYA ---
 const tg = window.Telegram.WebApp;
 tg.expand();
-
 const user = tg.initDataUnsafe.user;
-if (user && document.querySelector('.pname')) {
-    document.querySelector('.pname').innerText = user.first_name;
-}
+if (user && document.querySelector('.pname')) document.querySelector('.pname').innerText = user.first_name;
 
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
-let game;
-
-try { game = new Chess(); } catch (e) { console.error("Chess.js yuklanmadi"); }
 
 function showScreen(n) {
     SCREENS.forEach(s => {
-        const sc = document.getElementById('sc-' + s);
-        const nv = document.getElementById('nv-' + s);
+        const sc = document.getElementById('sc-' + s), nv = document.getElementById('nv-' + s);
         if (sc) sc.classList.remove('active');
         if (nv) nv.classList.remove('active');
     });
-    const sc = document.getElementById('sc-' + n);
-    const nv = document.getElementById('nv-' + n);
+    const sc = document.getElementById('sc-' + n), nv = document.getElementById('nv-' + n);
     if (sc) sc.classList.add('active');
     if (nv) nv.classList.add('active');
 }
-
 function goBack() { showScreen('play'); }
 function selGame(g) {
     curGame = g;
@@ -639,81 +599,58 @@ function setCT(btn) {
     btn.classList.add('active');
 }
 
-// --- 2. SHAXMAT ENGINE VA FULLSCREEN AI ---
-let selectedSq = null;
+// ==========================================
+// 2. SHAXMAT MOTOR (CHESS)
+// ==========================================
+let chessGame;
+try { chessGame = new Chess(); } catch (e) { console.error("Chess.js yuklanmadi"); }
+let chessSelectedSq = null;
 
-function renderBoard() {
+function renderChessBoard() {
     const wrap = document.getElementById('board-wrap');
-    if (!wrap || !game) return;
+    if (!wrap || !chessGame) return;
+    wrap.innerHTML = ''; wrap.className = 'fs-board-wrap'; wrap.style.cssText = ''; 
+    const boardEl = document.createElement('div'); boardEl.className = 'fs-board';
 
-    wrap.innerHTML = '';
-    wrap.className = 'fs-board-wrap';
-    wrap.style.cssText = ''; 
-
-    const board = game.board();
-    const boardEl = document.createElement('div');
-    boardEl.className = 'fs-board';
-
-    const validMoves = selectedSq ? game.moves({ square: selectedSq, verbose: true }) : [];
+    const validMoves = chessSelectedSq ? chessGame.moves({ square: chessSelectedSq, verbose: true }) : [];
     const validTargets = validMoves.map(m => m.to);
 
-    board.forEach((row, rIdx) => {
+    chessGame.board().forEach((row, rIdx) => {
         row.forEach((cell, cIdx) => {
             const sq = document.createElement('div');
             const coords = String.fromCharCode(97 + cIdx) + (8 - rIdx);
-            const isLight = (rIdx + cIdx) % 2 === 0;
-
             sq.className = 'fs-sq';
-            sq.style.backgroundColor = isLight ? '#e8d5b7' : '#7c5c3a';
-
-            if (selectedSq === coords) sq.style.backgroundColor = '#f59e0b';
+            sq.style.backgroundColor = (rIdx + cIdx) % 2 === 0 ? '#e8d5b7' : '#7c5c3a';
+            if (chessSelectedSq === coords) sq.style.backgroundColor = '#f59e0b';
 
             if (cell) {
-                const pieces = {
-                    'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
-                    'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔'
-                };
-                const pieceEl = document.createElement('span');
-                pieceEl.textContent = pieces[cell.color === 'w' ? cell.type.toUpperCase() : cell.type];
-                pieceEl.style.color = cell.color === 'w' ? '#ffffff' : '#000000';
-                if(cell.color === 'w') pieceEl.style.textShadow = "0 2px 4px rgba(0,0,0,0.5)";
-                pieceEl.style.zIndex = "3";
-                sq.appendChild(pieceEl);
+                const pieces = { 'p':'♟', 'r':'♜', 'n':'♞', 'b':'♝', 'q':'♛', 'k':'♚', 'P':'♙', 'R':'♖', 'N':'♘', 'B':'♗', 'Q':'♕', 'K':'♔' };
+                const pEl = document.createElement('span');
+                pEl.textContent = pieces[cell.color === 'w' ? cell.type.toUpperCase() : cell.type];
+                pEl.style.color = cell.color === 'w' ? '#ffffff' : '#000000';
+                if(cell.color === 'w') pEl.style.textShadow = "0 2px 4px rgba(0,0,0,0.5)";
+                pEl.style.zIndex = "3";
+                sq.appendChild(pEl);
             }
 
             if (validTargets.includes(coords)) {
-                const indicator = document.createElement('div');
-                indicator.className = cell ? 'move-cap' : 'move-dot';
-                sq.appendChild(indicator);
+                const ind = document.createElement('div');
+                ind.className = cell ? 'move-cap' : 'move-dot';
+                sq.appendChild(ind);
             }
 
             sq.onclick = () => {
-                if (game.game_over() || game.turn() === 'b') return;
-
-                if (selectedSq === null) {
-                    if (cell && cell.color === 'w') {
-                        selectedSq = coords;
-                        renderBoard();
-                    }
+                if (chessGame.game_over() || chessGame.turn() === 'b') return;
+                if (!chessSelectedSq) {
+                    if (cell && cell.color === 'w') { chessSelectedSq = coords; renderChessBoard(); }
                 } else {
-                    const isMoveValid = validTargets.includes(coords);
-                    
-                    if (isMoveValid) {
-                        game.move({ from: selectedSq, to: coords, promotion: 'q' });
-                        selectedSq = null;
-                        renderBoard();
-                        checkGameOver();
-                        
-                        if (!game.game_over()) {
-                            setTimeout(makeAIMove, 500); 
-                        }
+                    if (validTargets.includes(coords)) {
+                        chessGame.move({ from: chessSelectedSq, to: coords, promotion: 'q' });
+                        chessSelectedSq = null; renderChessBoard(); checkGameOver(chessGame, 'chess');
+                        if (!chessGame.game_over()) setTimeout(makeChessAIMove, 500);
                     } else {
-                        if (cell && cell.color === 'w') {
-                            selectedSq = coords;
-                        } else {
-                            selectedSq = null;
-                        }
-                        renderBoard();
+                        chessSelectedSq = (cell && cell.color === 'w') ? coords : null;
+                        renderChessBoard();
                     }
                 }
             };
@@ -723,83 +660,183 @@ function renderBoard() {
     wrap.appendChild(boardEl);
 }
 
-function makeAIMove() {
-    const moves = game.moves();
+function makeChessAIMove() {
+    const moves = chessGame.moves();
     if (moves.length > 0) {
-        const randomMove = moves[Math.floor(Math.random() * moves.length)];
-        game.move(randomMove);
-        renderBoard();
-        checkGameOver();
+        chessGame.move(moves[Math.floor(Math.random() * moves.length)]);
+        renderChessBoard(); checkGameOver(chessGame, 'chess');
     }
 }
 
-function checkGameOver() {
-    if (!game.game_over()) return;
-
-    let title = "";
-    let sub = "";
-    let color = "";
-
-    if (game.in_checkmate()) {
-        if (game.turn() === 'b') { 
-            title = "🏆 Checkmate!<br>You win!"; sub = "Tabriklaymiz, siz g'alaba qozondingiz!"; color = "var(--gold)"; 
-        } else { 
-            title = "💀 Checkmate!<br>You lose!"; sub = "Kompyuter g'alaba qozondi."; color = "var(--red)"; 
+// ==========================================
+// 3. SHASHKA MOTORI (YANGI MAXSUS KOD)
+// ==========================================
+class CheckersEngine {
+    constructor() { this.reset(); }
+    reset() {
+        this.board = [
+            [0,-1,0,-1,0,-1,0,-1],
+            [-1,0,-1,0,-1,0,-1,0],
+            [0,-1,0,-1,0,-1,0,-1],
+            [0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0],
+            [1,0,1,0,1,0,1,0],
+            [0,1,0,1,0,1,0,1],
+            [1,0,1,0,1,0,1,0]
+        ];
+        this.turn = 1; // 1=Oqlar, -1=Qoralar
+    }
+    getMoves(player) {
+        let moves = [], jumps = [];
+        for (let r=0; r<8; r++) {
+            for (let c=0; c<8; c++) {
+                if (this.board[r][c] * player > 0) {
+                    let isKing = Math.abs(this.board[r][c]) === 2;
+                    let dirs = isKing ? [[1,-1],[1,1],[-1,-1],[-1,1]] : (player === 1 ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]]);
+                    for (let d of dirs) {
+                        let nr = r+d[0], nc = c+d[1];
+                        if (nr>=0 && nr<8 && nc>=0 && nc<8) {
+                            if (this.board[nr][nc] === 0) {
+                                moves.push({from:{r,c}, to:{r:nr, c:nc}});
+                            } else if (this.board[nr][nc] * player < 0) {
+                                let jr = nr+d[0], jc = nc+d[1];
+                                if (jr>=0 && jr<8 && jc>=0 && jc<8 && this.board[jr][jc] === 0) {
+                                    jumps.push({from:{r,c}, to:{r:jr, c:jc}, jump:{r:nr, c:nc}});
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-    } else if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
-        title = "🤝 Draw"; sub = "O'yin durang bilan yakunlandi."; color = "#60a5fa";
+        return jumps.length > 0 ? jumps : moves; // Urish majburiy
+    }
+    move(m) {
+        let p = this.board[m.from.r][m.from.c];
+        this.board[m.from.r][m.from.c] = 0;
+        if (m.jump) this.board[m.jump.r][m.jump.c] = 0;
+        if ((p === 1 && m.to.r === 0) || (p === -1 && m.to.r === 7)) p *= 2; // Damka
+        this.board[m.to.r][m.to.c] = p;
+        this.turn *= -1;
+    }
+    isGameOver() { return this.getMoves(1).length === 0 || this.getMoves(-1).length === 0; }
+}
+
+let chkGame = new CheckersEngine();
+let chkSelectedSq = null;
+
+function renderCheckersBoard() {
+    const wrap = document.getElementById('board-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = ''; wrap.className = 'fs-board-wrap'; wrap.style.cssText = ''; 
+    const boardEl = document.createElement('div'); boardEl.className = 'fs-board';
+
+    const validMoves = chkSelectedSq ? chkGame.getMoves(1).filter(m => m.from.r === chkSelectedSq.r && m.from.c === chkSelectedSq.c) : [];
+    const validTargets = validMoves.map(m => m.to.r + ',' + m.to.c);
+
+    for (let r=0; r<8; r++) {
+        for (let c=0; c<8; c++) {
+            const sq = document.createElement('div');
+            sq.className = 'fs-sq';
+            sq.style.backgroundColor = (r + c) % 2 === 0 ? '#e8d5b7' : '#7c5c3a';
+
+            if (chkSelectedSq && chkSelectedSq.r === r && chkSelectedSq.c === c) sq.style.backgroundColor = '#f59e0b';
+
+            let pVal = chkGame.board[r][c];
+            if (pVal !== 0) {
+                const pEl = document.createElement('div');
+                pEl.style.cssText = `width:75%;height:75%;border-radius:50%;box-shadow:0 4px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:24px;z-index:3;`;
+                pEl.style.background = pVal > 0 ? '#f8fafc' : '#1e293b';
+                pEl.style.border = pVal > 0 ? '3px solid #cbd5e1' : '3px solid #0f172a';
+                if (Math.abs(pVal) === 2) pEl.innerHTML = '👑';
+                sq.appendChild(pEl);
+            }
+
+            if (validTargets.includes(r + ',' + c)) {
+                const ind = document.createElement('div'); ind.className = 'move-dot'; sq.appendChild(ind);
+            }
+
+            sq.onclick = () => {
+                if (chkGame.turn === -1 || chkGame.isGameOver()) return; // AI navbati
+                if (!chkSelectedSq) {
+                    if (pVal > 0 && chkGame.getMoves(1).some(m => m.from.r === r && m.from.c === c)) {
+                        chkSelectedSq = {r, c}; renderCheckersBoard();
+                    }
+                } else {
+                    let move = validMoves.find(m => m.to.r === r && m.to.c === c);
+                    if (move) {
+                        chkGame.move(move); chkSelectedSq = null; renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
+                        if (!chkGame.isGameOver()) setTimeout(makeChkAIMove, 600);
+                    } else {
+                        chkSelectedSq = pVal > 0 ? {r, c} : null; renderCheckersBoard();
+                    }
+                }
+            };
+            boardEl.appendChild(sq);
+        }
+    }
+    wrap.appendChild(boardEl);
+}
+
+function makeChkAIMove() {
+    let moves = chkGame.getMoves(-1);
+    if (moves.length > 0) {
+        chkGame.move(moves[Math.floor(Math.random() * moves.length)]);
+        renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
+    }
+}
+
+// ==========================================
+// 4. UMUMIY O'YIN BOSHQARUVI
+// ==========================================
+function checkGameOver(gameObj, type) {
+    let isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
+    if (!isOver) return;
+
+    let title = "", sub = "", color = "";
+    if (type === 'chess') {
+        if (gameObj.in_checkmate()) {
+            if (gameObj.turn() === 'b') { title = "🏆 Checkmate!"; sub = "Siz g'alaba qozondingiz!"; color = "var(--gold)"; } 
+            else { title = "💀 Checkmate!"; sub = "Kompyuter g'alaba qozondi."; color = "var(--red)"; }
+        } else { title = "🤝 Draw"; sub = "O'yin durang bilan yakunlandi."; color = "#60a5fa"; }
+    } else {
+        let pMoves = gameObj.getMoves(1).length, aiMoves = gameObj.getMoves(-1).length;
+        if (pMoves === 0) { title = "💀 Yutqazdingiz!"; sub = "Sizda yurish qolmadi yoki donangiz tugadi."; color = "var(--red)"; }
+        else if (aiMoves === 0) { title = "🏆 G'alaba!"; sub = "Siz AI ni yengdingiz!"; color = "var(--gold)"; }
+        else { title = "🤝 Durang"; sub = "O'yin tugadi."; color = "#60a5fa"; }
     }
 
     const wrap = document.getElementById('board-wrap');
-    const overlay = document.createElement('div');
-    overlay.className = 'end-overlay';
-    overlay.innerHTML = `
-        <div class="end-title" style="color:${color}">${title}</div>
-        <div class="end-sub">${sub}</div>
-        <button class="end-btn" onclick="startVsAI()">Qayta o'ynash</button>
-    `;
+    const overlay = document.createElement('div'); overlay.className = 'end-overlay';
+    overlay.innerHTML = `<div class="end-title" style="color:${color}">${title}</div><div class="end-sub">${sub}</div><button class="end-btn" onclick="startVsAI()">Qayta o'ynash</button>`;
     wrap.appendChild(overlay);
 }
 
 function startVsAI() {
     const modal = document.getElementById('match-modal');
     if (!modal) return;
-    
     modal.classList.add('open', 'fs-modal');
 
     const titleElements = modal.querySelectorAll('.mtitle');
-    if(titleElements.length > 0) titleElements[0].innerText = "Siz vs AI";
+    if(titleElements.length > 0) titleElements[0].innerText = curGame === 'chess' ? "Shaxmat vs AI" : "Shashka vs AI";
 
     const icon = document.getElementById('m-icon');
-    if (icon) {
-        icon.style.display = 'none';
-        const textDiv = icon.nextElementSibling;
-        if (textDiv) textDiv.style.display = 'none';
-    }
+    if (icon) { icon.style.display = 'none'; if(icon.nextElementSibling) icon.nextElementSibling.style.display = 'none'; }
 
-    const buttons = modal.querySelectorAll('button');
-    buttons.forEach(btn => {
+    modal.querySelectorAll('button').forEach(btn => {
         if (btn.innerText.includes('Create Room')) btn.style.display = 'none';
         if (btn.innerText.includes('Cancel')) btn.innerText = "Chiqish";
     });
 
-    if (typeof Chess !== 'undefined') {
-        game = new Chess();
-        selectedSq = null;
-        renderBoard();
+    if (curGame === 'chess') {
+        if (typeof Chess !== 'undefined') { chessGame = new Chess(); chessSelectedSq = null; renderChessBoard(); }
     } else {
-        alert("Shaxmat kutubxonasi yuklanmadi. Iltimos sahifani yangilang.");
+        chkGame.reset(); chkSelectedSq = null; renderCheckersBoard();
     }
 }
 
-function showMatchModal() {
-    startVsAI();
-}
-
-function closeModal() {
-    const modal = document.getElementById('match-modal');
-    if(modal) modal.classList.remove('open', 'fs-modal');
-}
+function showMatchModal() { startVsAI(); }
+function closeModal() { document.getElementById('match-modal').classList.remove('open', 'fs-modal'); }
 
 showScreen('play');
 </script>
