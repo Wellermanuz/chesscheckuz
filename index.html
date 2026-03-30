@@ -575,10 +575,13 @@ dynamicStyles.innerHTML = `
   .start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
   .start-game-btn:active { transform: scale(0.97); }
 
-  /* TAYMER VA O'YIN KONTEYNERI */
+  /* TAYMER VA O'YIN KONTEYNERI (Qotirilgan kenglik bilan) */
   .timer-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; }
   .game-header, .game-footer { display: flex; justify-content: space-between; align-items: center; font-family: 'Rajdhani', sans-serif; color: var(--text); font-size: 18px; font-weight: 700; background: var(--s2); padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-  .timer-box { background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 18px; letter-spacing: 1px; color: #fff; transition: 0.3s; border: 1px solid transparent; }
+  
+  /* TAYMER QUTISI MUAMMOSI HAL QILINDI */
+  .timer-box { background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 18px; letter-spacing: 1px; color: #fff; transition: 0.3s; border: 1px solid transparent; min-width: 85px; text-align: center; font-variant-numeric: tabular-nums; }
+  
   .timer-box.active { background: rgba(34, 197, 94, 0.2); border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(34, 197, 94, 0.3); }
 
   /* OVERLAY */
@@ -753,7 +756,7 @@ function renderChessBoard() {
                         chessSelectedSq = null; 
                         
                         renderChessBoard(); 
-                        checkGameOver(chessGame, 'chess'); // XATO SHU YERDA EDI (TUZAILDI)
+                        checkGameOver(chessGame, 'chess'); 
                         
                         if (!chessGame.game_over()) {
                             isAITurn = true; 
@@ -793,7 +796,6 @@ function makeChessAIMove() {
     playSound(executedMove.captured ? 'capture' : 'move'); 
     globalLastMove = { from: executedMove.from, to: executedMove.to }; 
     
-    // Vizual qulaylik: AI o'ylagani uchun taymeridan -1 sekund majburan olinadi
     if (aiTimeSec > 0) aiTimeSec -= 1;
 
     isAITurn = false; 
@@ -945,7 +947,7 @@ function renderCheckersBoard() {
                             chkSelectedSq = null; 
                             
                             renderCheckersBoard(); 
-                            checkGameOver(chkGame, 'checkers'); // XATO SHU YERDA EDI
+                            checkGameOver(chkGame, 'checkers'); 
                             
                             if (!chkGame.isGameOver() && chkGame.turn === -1) {
                                 isAITurn = true; updateTimersUI();
@@ -982,7 +984,6 @@ function makeChkAIMove() {
 
     chkGame.move(bestMove); playSound(bestMove.jump ? 'capture' : 'move'); globalLastMove = { from: bestMove.from, to: bestMove.to }; 
     
-    // AI vaqtidan -1 soniya kamaytiramiz
     if (aiTimeSec > 0) aiTimeSec -= 1;
 
     renderCheckersBoard(); 
@@ -1018,7 +1019,6 @@ function updateTimersUI() {
 }
 
 function tickTimer() {
-    // 1-QADAM: O'yin qoidalar bo'yicha tugaganligini tekshirish
     let isOver = curGame === 'chess' ? chessGame.game_over() : chkGame.isGameOver();
     if (isOver) { 
         clearInterval(gameTimerInterval); 
@@ -1042,7 +1042,6 @@ function handleTimeout(loser) {
     checkGameOver(curGame === 'chess' ? chessGame : chkGame, curGame, loser);
 }
 
-// BU YERDA XATO BOR EDI - TAYMERNI TO'XTATISH FUNTKSIYASI TUZATILDI
 function checkGameOver(gameObj, type, timeoutLoser = null) {
     let isOver = false;
     let title = "", sub = "", color = "";
@@ -1054,7 +1053,7 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
         else { title = "⏱ AI Vaqti tugadi!"; sub = "Kompyuter vaqtni yo'qotdi! +20 pts"; color = "var(--gold)"; isWin = true; }
     } else {
         isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
-        if (!isOver) return; // MUHIM YECHIM: Agar o'yin tugamagan bo'lsa, funksiya shu yerdan orqaga qaytadi. Taymer o'chmaydi!
+        if (!isOver) return; 
 
         if (type === 'chess') {
             if (gameObj.in_checkmate()) {
@@ -1069,7 +1068,6 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
         }
     }
 
-    // TAYMERNI FAQAT O'YIN TUGAGANDAGINA TO'XTATAMIZ!
     if (gameTimerInterval) clearInterval(gameTimerInterval); 
     
     playSound('end'); 
@@ -1162,7 +1160,7 @@ window.finalStartGame = function() {
         chkGame.reset(); chkSelectedSq = null; renderCheckersBoard();
     }
 
-    gameTimerInterval = setInterval(tickTimer, 1000); // TAYMER ISHGA TUSHDI
+    gameTimerInterval = setInterval(tickTimer, 1000); 
 }
 
 function startVsAI() {
@@ -1201,7 +1199,7 @@ function closeModal() {
         if (icon) { icon.style.display = 'block'; if(icon.nextElementSibling) icon.nextElementSibling.style.display = 'block'; }
         modal.querySelectorAll('button').forEach(btn => btn.style.display = '');
     }
-    if (gameTimerInterval) clearInterval(gameTimerInterval); // Chiqqanda taymer o'chadi
+    if (gameTimerInterval) clearInterval(gameTimerInterval); 
 }
 
 updateStatsUI();
