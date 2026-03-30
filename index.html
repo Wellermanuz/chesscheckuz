@@ -543,8 +543,11 @@ dynamicStyles.innerHTML = `
   .fs-modal .modal { height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; display: flex; flex-direction: column; }
   .fs-modal .modal > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px !important; gap: 0 !important; }
 
+  /* MUAMMO HAL QILINDI: Eski matnlar va ikonkalarni majburiy yashirish */
+  .fs-modal p, .fs-modal h3, .fs-modal h4, .fs-modal .m-icon, .fs-modal .spinner { display: none !important; }
+
   /* DOSKA STILI */
-  .fs-board-wrap { width: 100%; max-width: 400px; margin: 0 auto; position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.5); background: transparent; }
+  .fs-board-wrap { width: 100%; max-width: 400px; margin: 0 auto; position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.5); background: transparent; display: flex !important; }
   .fs-board-wrap::before { content: ""; display: block; padding-bottom: 100%; }
   .fs-board { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
   .fs-sq { display: flex; align-items: center; justify-content: center; font-size: 9.5vw; line-height: 1; cursor: pointer; position: relative; }
@@ -562,7 +565,7 @@ dynamicStyles.innerHTML = `
   .mandatory-piece { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; }
 
   /* DARAJA VA VAQT TANLASH EKRANI */
-  .diff-mode-wrap { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: -8vh; overflow-y: auto; padding: 20px 0;}
+  .diff-mode-wrap { width: 100%; flex: 1; display: flex !important; flex-direction: column; align-items: center; justify-content: center; margin-top: -8vh; overflow-y: auto; padding: 20px 0;}
   .diff-title { font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--gold); margin-bottom: 24px; font-weight: 900; text-align: center; letter-spacing: 1px; }
   .diff-btn { background: var(--s2); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; width: 100%; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
   .diff-btn:active { transform: scale(0.97); }
@@ -570,10 +573,9 @@ dynamicStyles.innerHTML = `
   
   .start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
   .start-game-btn:active { transform: scale(0.97); }
-  .puzzle-main-btn { background: linear-gradient(135deg, #8b5cf6, #6d28d9); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3); margin-top: 12px; }
 
   /* TAYMER VA O'YIN KONTEYNERI */
-  .timer-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; }
+  .timer-wrap { width: 100%; max-width: 400px; display: flex !important; flex-direction: column; gap: 12px; }
   .game-header, .game-footer { display: flex; justify-content: space-between; align-items: center; font-family: 'Rajdhani', sans-serif; color: var(--text); font-size: 18px; font-weight: 700; background: var(--s2); padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
   
   .timer-box { background: rgba(0,0,0,0.4); padding: 6px 0; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 18px; letter-spacing: 2px; color: #fff; border: 1px solid transparent; width: 95px !important; min-width: 95px !important; max-width: 95px !important; flex: 0 0 95px !important; text-align: center; box-sizing: border-box; font-variant-numeric: tabular-nums; transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, color 0.3s; }
@@ -590,18 +592,6 @@ dynamicStyles.innerHTML = `
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 `;
 document.head.appendChild(dynamicStyles);
-
-// Asosiy tugmalarni UI ga qo'shish (Puzzles tugmasi)
-window.addEventListener('DOMContentLoaded', () => {
-    const playBtn = document.querySelector('.play-btn');
-    if(playBtn) {
-        const puzzleBtn = document.createElement('button');
-        puzzleBtn.className = 'start-game-btn puzzle-main-btn';
-        puzzleBtn.innerHTML = '🧩 PUZZLES (Masalalar)';
-        puzzleBtn.onclick = showPuzzlesModal;
-        playBtn.parentNode.insertBefore(puzzleBtn, playBtn.nextSibling);
-    }
-});
 
 // --- 0. OVOZ EFFEKTLARI ---
 const sndMove = new Audio('https://lichess1.org/assets/sound/standard/Move.ogg');
@@ -638,7 +628,7 @@ const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social
 let curGame = 'chess';
 let curMode = 'ai'; // 'ai' yoki 'puzzle'
 let activePuzzleId = null;
-let activeHint = null; // Qayerga yurish kerakligi (Podskazka)
+let activeHint = null; 
 
 let aiDifficulty = null; 
 let gameTimeMins = null; 
@@ -723,7 +713,7 @@ function showScreen(n) {
     if (nv) nv.classList.add('active');
 }
 
-function selGame(g) {
+window.selGame = function(g) {
     curGame = g;
     document.getElementById('gt-chess').classList.toggle('active', g === 'chess');
     document.getElementById('gt-check').classList.toggle('active', g === 'checkers');
@@ -733,7 +723,7 @@ function selGame(g) {
 }
 
 // ==========================================
-// PUZZLES DATABASE (ARALASH DARAJA)
+// PUZZLES DATABASE 
 // ==========================================
 const puzzlesDB = {
     chess: [
@@ -766,9 +756,7 @@ const puzzlesDB = {
     ]
 };
 
-function getPuzzleById(type, id) {
-    return puzzlesDB[type].find(p => p.id === id);
-}
+function getPuzzleById(type, id) { return puzzlesDB[type].find(p => p.id === id); }
 
 // ==========================================
 // 2. SHAXMAT MOTOR & MINIMAX AI
@@ -797,7 +785,6 @@ function renderChessBoard() {
             if (globalLastMove && (globalLastMove.from === coords || globalLastMove.to === coords)) sq.classList.add('last-move');
             if (chessSelectedSq === coords) sq.style.backgroundColor = '#f59e0b'; 
             
-            // Podskazka izi (Hint)
             if (activeHint && (activeHint.from === coords || activeHint.to === coords)) sq.classList.add('hint-move');
 
             if (cell) {
@@ -822,27 +809,17 @@ function renderChessBoard() {
                 } else {
                     if (validTargets.includes(coords)) {
                         
-                        // PUZZLES LOGIKASI
                         if (curMode === 'puzzle') {
                             let puz = getPuzzleById('chess', activePuzzleId);
                             if (chessSelectedSq === puz.move.from && coords === puz.move.to) {
-                                // TO'G'RI YECHIM
                                 chessGame.move({ from: chessSelectedSq, to: coords, promotion: 'q' });
-                                playSound('capture');
-                                activeHint = null;
-                                checkPuzzleWin('chess');
+                                playSound('capture'); activeHint = null; checkPuzzleWin('chess');
                             } else {
-                                // XATO YECHIM
-                                playSound('error');
-                                chessSelectedSq = null;
-                                renderChessBoard();
-                                if(tg.showAlert) tg.showAlert("❌ Noto'g'ri yurish! Boshqacha o'ylab ko'ring.");
-                                else alert("❌ Noto'g'ri yurish!");
+                                playSound('error'); chessSelectedSq = null; renderChessBoard();
                             }
                             return;
                         }
 
-                        // ODDIY AI O'YINI
                         let moveObj = chessGame.move({ from: chessSelectedSq, to: coords, promotion: 'q' });
                         playSound(moveObj.captured ? 'capture' : 'move'); 
                         globalLastMove = { from: moveObj.from, to: moveObj.to }; 
@@ -852,9 +829,7 @@ function renderChessBoard() {
                         checkGameOver(chessGame, 'chess'); 
                         
                         if (!chessGame.game_over()) {
-                            isAITurn = true; 
-                            updateTimersUI(); 
-                            setTimeout(makeChessAIMove, 800); 
+                            isAITurn = true; updateTimersUI(); setTimeout(makeChessAIMove, 800); 
                         }
                     } else {
                         chessSelectedSq = (cell && cell.color === 'w') ? coords : null;
@@ -896,6 +871,10 @@ class CheckersEngine {
             [0,0,0,0,0,0,0,0], [1,0,1,0,1,0,1,0], [0,1,0,1,0,1,0,1], [1,0,1,0,1,0,1,0]
         ];
         this.turn = 1; this.multiJumpSq = null;
+    }
+    clone() {
+        let c = new CheckersEngine(); c.board = this.board.map(r => [...r]); c.turn = this.turn;
+        c.multiJumpSq = this.multiJumpSq ? {r: this.multiJumpSq.r, c: this.multiJumpSq.c} : null; return c;
     }
     getMoves(player, specificSq = null) {
         let moves = [], jumps = [];
@@ -973,7 +952,6 @@ function renderCheckersBoard() {
                     sq.classList.add('last-move');
                 }
                 
-                // Podskazka
                 if (activeHint && ((activeHint.from.r === r && activeHint.from.c === c) || (activeHint.to.r === r && activeHint.to.c === c))) {
                     sq.classList.add('hint-move');
                 }
@@ -1007,7 +985,6 @@ function renderCheckersBoard() {
                                 chkGame.move(move); playSound('capture'); activeHint = null; checkPuzzleWin('checkers');
                             } else {
                                 playSound('error'); chkSelectedSq = null; renderCheckersBoard();
-                                if(tg.showAlert) tg.showAlert("❌ Noto'g'ri urish! Qaytadan urinib ko'ring.");
                             }
                             return;
                         }
@@ -1049,10 +1026,8 @@ function makeChkAIMove() {
 // ==========================================
 window.useHint = function() {
     if (curMode !== 'puzzle') return;
-    
-    // Yordam cheksiz, sanagich o'rniga infinity belgisi ko'rinadi
     let puz = getPuzzleById(curGame, activePuzzleId);
-    activeHint = puz.move; // Podskazka izi qo'shiladi
+    activeHint = puz.move; 
     curGame === 'chess' ? renderChessBoard() : renderCheckersBoard();
 }
 
@@ -1060,7 +1035,7 @@ function formatTime(sec) {
     let m = Math.floor(sec / 60); let s = sec % 60; return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
 }
 function updateTimersUI() {
-    if(curMode === 'puzzle') return; // Puzzle da taymer yoq
+    if(curMode === 'puzzle') return; 
     const ut = document.getElementById('user-timer'), at = document.getElementById('ai-timer');
     if (ut && at) {
         ut.innerText = formatTime(userTimeSec); at.innerText = formatTime(aiTimeSec);
@@ -1084,10 +1059,8 @@ function handleTimeout(loser) { clearInterval(gameTimerInterval); checkGameOver(
 // ==========================================
 function checkPuzzleWin(type) {
     playSound('end');
-    
-    // Agar masalani birinchi marta yechayotgan bo'lsa, ball beriladi
     if (!gameStats[type].solved.includes(activePuzzleId)) {
-        gameStats[type].pts += 50; // Puzzle uchun 50 ball
+        gameStats[type].pts += 50; 
         gameStats[type].solved.push(activePuzzleId);
         saveCloudStats();
         updateStatsUI();
@@ -1137,11 +1110,19 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
 }
 
 // ==========================================
-// INTERFEYS EKRANLARI
+// INTERFEYS EKRANLARI (Tugmalarni ulash)
 // ==========================================
 window.showPuzzlesModal = function() {
     const modal = document.getElementById('match-modal');
     if (!modal) return;
+    
+    // Eski yozuvlarni yo'qotish uchun maxsus tozalash
+    Array.from(modal.querySelectorAll('div, p, span, img, svg')).forEach(el => {
+        if (el.textContent.includes('Searching') || el.textContent.includes('takes a few seconds')) {
+            el.style.display = 'none';
+        }
+    });
+
     modal.classList.add('open', 'fs-modal');
     curMode = 'puzzle';
 
@@ -1150,7 +1131,9 @@ window.showPuzzlesModal = function() {
 
     const titleElements = modal.querySelectorAll('.mtitle');
     if(titleElements.length > 0) titleElements[0].innerText = curGame === 'chess' ? "Shaxmat Masalalari" : "Shashka Masalalari";
-    document.getElementById('m-icon').style.display = 'none'; 
+    
+    const mIcon = document.getElementById('m-icon');
+    if(mIcon) mIcon.style.display = 'none'; 
     modal.querySelectorAll('button').forEach(b => { if (b.innerText.includes('Create') || b.innerText.includes('Cancel')) b.style.display = 'none'; });
     modal.querySelector('.m-close').setAttribute('onclick', 'closeModal()');
 
@@ -1202,6 +1185,31 @@ window.startPuzzle = function(id) {
     } else {
         chkGame.reset(); chkGame.board = puz.board.map(r => [...r]); chkSelectedSq = null; renderCheckersBoard();
     }
+}
+
+window.startVsAI = function() {
+    const modal = document.getElementById('match-modal');
+    if (!modal) return;
+
+    Array.from(modal.querySelectorAll('div, p, span, img, svg')).forEach(el => {
+        if (el.textContent.includes('Searching') || el.textContent.includes('takes a few seconds')) {
+            el.style.display = 'none';
+        }
+    });
+
+    modal.classList.add('open', 'fs-modal');
+    const checkTab = document.getElementById('gt-check');
+    curGame = (checkTab && checkTab.classList.contains('active')) ? 'checkers' : 'chess';
+    
+    const titleElements = modal.querySelectorAll('.mtitle');
+    if(titleElements.length > 0) titleElements[0].innerText = curGame === 'chess' ? "Shaxmat vs AI" : "Shashka vs AI";
+    
+    const mIcon = document.getElementById('m-icon');
+    if(mIcon) mIcon.style.display = 'none'; 
+    modal.querySelectorAll('button').forEach(b => { if (b.innerText.includes('Create') || b.innerText.includes('Cancel')) b.style.display = 'none'; });
+    modal.querySelector('.m-close').setAttribute('onclick', 'closeModal()');
+    
+    renderDifficultySelection(); 
 }
 
 function renderDifficultySelection() {
@@ -1265,27 +1273,15 @@ window.finalStartGame = function() {
     gameTimerInterval = setInterval(tickTimer, 1000); 
 }
 
-function startVsAI() {
-    const modal = document.getElementById('match-modal');
-    if (!modal) return;
-    modal.classList.add('open', 'fs-modal');
-    const checkTab = document.getElementById('gt-check');
-    curGame = (checkTab && checkTab.classList.contains('active')) ? 'checkers' : 'chess';
-    modal.querySelectorAll('.mtitle')[0].innerText = curGame === 'chess' ? "Shaxmat vs AI" : "Shashka vs AI";
-    document.getElementById('m-icon').style.display = 'none'; 
-    modal.querySelectorAll('button').forEach(b => { if (b.innerText.includes('Create') || b.innerText.includes('Cancel')) b.style.display = 'none'; });
-    modal.querySelector('.m-close').setAttribute('onclick', 'closeModal()');
-    renderDifficultySelection(); 
-}
-
-function showMatchModal() { startVsAI(); }
+function showMatchModal() { startVsAI(); } // Asosiy "CHESS MATCH" tugmasi xatosi oldini olish uchun
 
 function closeModal() { 
     const modal = document.getElementById('match-modal');
     if(modal) {
         modal.classList.remove('open', 'fs-modal');
         modal.querySelectorAll('.mtitle')[0].innerText = "Finding Match...";
-        document.getElementById('m-icon').style.display = 'block'; 
+        const mIcon = document.getElementById('m-icon');
+        if(mIcon) mIcon.style.display = 'block'; 
         modal.querySelectorAll('button').forEach(b => b.style.display = '');
     }
     if (gameTimerInterval) clearInterval(gameTimerInterval); 
