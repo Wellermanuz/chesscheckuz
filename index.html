@@ -578,36 +578,11 @@ dynamicStyles.innerHTML = `
   .start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
   .start-game-btn:active { transform: scale(0.97); }
 
-  /* TAYMER VA O'YIN KONTEYNERI (QOTIRILGAN VERSIYA) */
+  /* TAYMER VA O'YIN KONTEYNERI (QOTIRILGAN) */
   .timer-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; }
   .game-header, .game-footer { display: flex; justify-content: space-between; align-items: center; font-family: 'Rajdhani', sans-serif; color: var(--text); font-size: 18px; font-weight: 700; background: var(--s2); padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
   
-  /* MUAMMO HAL QILINDI: width, flex-shrink va tnum */
- /* TAYMER QUTISI MUAMMOSI UZIL-KESIL HAL QILINDI */
-  .timer-box { 
-      background: rgba(0,0,0,0.4); 
-      padding: 6px 0; 
-      border-radius: 6px; 
-      font-family: 'Orbitron', sans-serif; 
-      font-size: 18px; 
-      letter-spacing: 2px; 
-      color: #fff; 
-      border: 1px solid transparent; 
-      
-      /* Qat'iy o'lchamlar - aslo ezilmaydi yoki kengaymaydi */
-      width: 95px !important; 
-      min-width: 95px !important; 
-      max-width: 95px !important; 
-      flex: 0 0 95px !important; 
-      
-      text-align: center; 
-      box-sizing: border-box; 
-      font-variant-numeric: tabular-nums; 
-      
-      /* Eng muhim joyi: Animatsiyani faqat ranglarga cheklaymiz ('all' emas!) */
-      transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, color 0.3s; 
-  }
-  
+  .timer-box { background: rgba(0,0,0,0.4); padding: 6px 0; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 18px; letter-spacing: 2px; color: #fff; border: 1px solid transparent; width: 95px !important; min-width: 95px !important; max-width: 95px !important; flex: 0 0 95px !important; text-align: center; box-sizing: border-box; font-variant-numeric: tabular-nums; transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, color 0.3s; }
   .timer-box.active { background: rgba(34, 197, 94, 0.2); border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(34, 197, 94, 0.3); }
 
   /* OVERLAY */
@@ -653,16 +628,54 @@ let aiDifficulty = null;
 let gameTimeMins = null; 
 let globalLastMove = null; 
 
-// --- TAYMER O'ZGARUVCHILARI ---
 let gameTimerInterval = null;
 let userTimeSec = 0;
 let aiTimeSec = 0;
 
-// --- BALLAR VA XOTIRA TIZIMI ---
+// --- YANGI: TELEGRAM CLOUD STORAGE TIZIMI ---
 let gameStats = { chess: { pts: 0, wins: 0 }, checkers: { pts: 0, wins: 0 } };
-let savedStats = localStorage.getItem('chess_checkers_stats');
-if (savedStats) { gameStats = JSON.parse(savedStats); } 
-else { localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats)); }
+
+function loadCloudStats() {
+    // Agar Telegram Cloud Storage qo'llab-quvvatlansa (Cloud da ishlaydi)
+    if (tg.CloudStorage) {
+        tg.CloudStorage.getItem('chess_checkers_stats', function(err, value) {
+            if (!err && value) {
+                // Eski foydalanuvchi ma'lumotlarini yuklash
+                gameStats = JSON.parse(value);
+                updateStatsUI();
+            } else {
+                // Yangi foydalanuvchi uchun 0 qilib saqlash
+                saveCloudStats();
+                setTimeout(() => {
+                    if (tg.showAlert) tg.showAlert("☁️ Telegram Cloud yoqildi!\n\n⚡ O'yinga xush kelibsiz! Kesh tozalansa ham ma'lumotlaringiz o'chmaydi.");
+                }, 500);
+            }
+        });
+    } else {
+        // Zaxira: Kompyuter brauzeri yoki eski Telegramlar uchun localStorage
+        let savedStats = localStorage.getItem('chess_checkers_stats');
+        if (savedStats) {
+            gameStats = JSON.parse(savedStats);
+        } else {
+            localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats));
+        }
+        updateStatsUI();
+    }
+}
+
+function saveCloudStats() {
+    let stringData = JSON.stringify(gameStats);
+    // Asosiy: Telegram bulutiga yozish
+    if (tg.CloudStorage) {
+        tg.CloudStorage.setItem('chess_checkers_stats', stringData);
+    }
+    // Zaxira: Telefon xotirasiga yozish
+    localStorage.setItem('chess_checkers_stats', stringData);
+}
+
+// Boshlang'ich qadamda ma'lumotlarni bulutdan yuklashni boshlaymiz
+loadCloudStats();
+// ---------------------------------------------
 
 function getLevelInfo(pts) {
     let level = Math.floor(pts / 100) + 1; 
@@ -1095,14 +1108,13 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
     }
 
     if (gameTimerInterval) clearInterval(gameTimerInterval); 
-    
     playSound('end'); 
 
     if (isWin) { gameStats[type].pts += 20; gameStats[type].wins += 1; } 
     else if (isLose) { gameStats[type].pts -= 10; if (gameStats[type].pts < 0) gameStats[type].pts = 0; }
     
-    localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats));
-    updateStatsUI();
+    // --- YANGI: NATIJALARNI BULUTGA SAQLASH ---
+    saveCloudStats();
 
     const wrap = document.getElementById('inner-board-wrap') || document.getElementById('board-wrap');
     const overlay = document.createElement('div'); overlay.className = 'end-overlay';
