@@ -537,32 +537,31 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
   </div>
 </div>
 <script>
-// ==========================================
-// 1. DINAMIK CSS VA UI SOZLAMALARI
-// ==========================================
+// --- Dinamik Fullscreen va UI elementlari uchun CSS ---
 const dynamicStyles = document.createElement('style');
 dynamicStyles.innerHTML = `
-  .fs-modal .modal { height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; display: flex; flex-direction: column; background-color: var(--bg2) !important;}
-  .fs-modal .modal > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px !important; gap: 0 !important; overflow: hidden; position: relative;}
-  
-  /* MUAMMO HAL QILINDI: ESKI MATNLARNI AGRESSIV YASHIRISH */
-  .fs-modal p, .fs-modal h3, .fs-modal h4, .fs-modal .spinner, .fs-modal img[src*="spin"] { display: none !important; }
-  
+  .fs-modal .modal { height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; display: flex; flex-direction: column; }
+  .fs-modal .modal > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px !important; gap: 0 !important; }
+
   /* DOSKA STILI */
-  .fs-board-wrap { width: 100%; max-width: 400px; margin: 0 auto; position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.5); background: transparent; display: flex !important; }
+  .fs-board-wrap { width: 100%; max-width: 400px; margin: 0 auto; position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.5); background: transparent; }
   .fs-board-wrap::before { content: ""; display: block; padding-bottom: 100%; }
   .fs-board { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
   .fs-sq { display: flex; align-items: center; justify-content: center; font-size: 9.5vw; line-height: 1; cursor: pointer; position: relative; }
   @media (min-width: 430px) { .fs-sq { font-size: 38px; } }
 
+  /* OXIRGI YURISH IZI */
   .last-move { position: relative; }
   .last-move::before { content: ''; position: absolute; inset: 0; background-color: rgba(234, 179, 8, 0.5) !important; z-index: 1; }
-  
+
+  /* KO'RSATKICHLAR VA MILTILLASH */
   .move-dot { position: absolute; width: 25%; height: 25%; background: rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
   .move-cap { position: absolute; width: 85%; height: 85%; border: 4px solid rgba(34, 197, 94, 0.85); border-radius: 50%; z-index: 2; pointer-events: none; }
+  @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+  .mandatory-piece { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; }
 
   /* DARAJA VA VAQT TANLASH EKRANI */
-  .diff-mode-wrap { width: 100%; flex: 1; display: flex !important; flex-direction: column; align-items: center; justify-content: center; margin-top: -8vh; padding: 20px 0;}
+  .diff-mode-wrap { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: -8vh; }
   .diff-title { font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--gold); margin-bottom: 24px; font-weight: 900; text-align: center; letter-spacing: 1px; }
   .diff-btn { background: var(--s2); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; width: 100%; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
   .diff-btn:active { transform: scale(0.97); }
@@ -572,58 +571,39 @@ dynamicStyles.innerHTML = `
   .diff-btn.medium:hover { background: rgba(245, 158, 11, 0.1); border-color: var(--gold); }
   .diff-btn.hard { border-color: rgba(239, 68, 68, 0.5); }
   .diff-btn.hard:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--red); }
+  .diff-btn.active.easy { background: rgba(34, 197, 94, 0.2); border-color: var(--green); }
+  .diff-btn.active.medium { background: rgba(245, 158, 11, 0.2); border-color: var(--gold); }
+  .diff-btn.active.hard { background: rgba(239, 68, 68, 0.2); border-color: var(--red); }
+  
   .start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
   .start-game-btn:active { transform: scale(0.97); }
+
+  /* TAYMER VA O'YIN KONTEYNERI (QOTIRILGAN) */
+  .timer-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; }
+  .game-header, .game-footer { display: flex; justify-content: space-between; align-items: center; font-family: 'Rajdhani', sans-serif; color: var(--text); font-size: 18px; font-weight: 700; background: var(--s2); padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
   
-  /* TAYMER VA O'YIN KONTEYNERI */
-  .timer-wrap { width: 100%; max-width: 400px; display: flex !important; flex-direction: column; gap: 12px; position: relative; }
-  .game-header, .game-footer { display: flex; justify-content: space-between; align-items: center; font-family: 'Rajdhani', sans-serif; color: var(--text); font-size: 18px; font-weight: 700; background: var(--s2); padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 5; }
   .timer-box { background: rgba(0,0,0,0.4); padding: 6px 0; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 18px; letter-spacing: 2px; color: #fff; border: 1px solid transparent; width: 95px !important; min-width: 95px !important; max-width: 95px !important; flex: 0 0 95px !important; text-align: center; box-sizing: border-box; font-variant-numeric: tabular-nums; transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, color 0.3s; }
   .timer-box.active { background: rgba(34, 197, 94, 0.2); border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(34, 197, 94, 0.3); }
 
   /* OVERLAY */
-  .end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; backdrop-filter: blur(4px); }
+  .end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; backdrop-filter: blur(4px); }
   .end-title { font-size: 28px; margin-bottom: 8px; font-weight: 900; line-height: 1.2; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
   .end-sub { font-size: 14px; color: var(--text); margin-bottom: 24px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
   .end-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 12px 28px; border-radius: 12px; color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-  /* SHABLONDAGI CHAT VA SMAYLLAR UI */
-  .chat-ui-wrapper { position: absolute; bottom: 70px; left: 0; right: 0; display: flex; flex-direction: column; gap: 8px; z-index: 100; pointer-events: none; }
-  .chat-row { display: flex; gap: 8px; align-items: center; justify-content: center; pointer-events: auto; }
-  
-  .chat-icon-btn { background: #1e3a8a; border-radius: 12px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: none; color: #fff; flex-shrink: 0; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s;}
-  .chat-icon-btn:active { transform: scale(0.9); }
-  
-  .chat-options { background: rgba(15, 23, 42, 0.95); border-radius: 12px; display: flex; align-items: center; padding: 0 10px; height: 48px; width: 280px; gap: 15px; overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-  .chat-options::-webkit-scrollbar { display: none; }
-  
-  .emote-btn { font-size: 26px; background: none; border: none; padding: 0; margin: 0; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
-  .emote-btn:active { transform: scale(0.8); }
-  
-  .text-msg-btn { background: #1e3a8a; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: 0.2s;}
-  .text-msg-btn:active { transform: scale(0.95); background: #2563eb; }
-
-  /* PUFAKCHALAR (BUBBLES) */
-  .chat-bubble { position: absolute; background: #fff; color: #000; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 16px; padding: 8px 16px; border-radius: 20px; z-index: 150; box-shadow: 0 4px 15px rgba(0,0,0,0.3); opacity: 0; transform: translateY(10px) scale(0.9); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
-  .chat-bubble.show { opacity: 1; transform: translateY(0) scale(1); }
-  .bubble-user { bottom: 65px; left: 20px; border-bottom-left-radius: 4px; }
-  .bubble-ai { top: 65px; right: 20px; border-top-right-radius: 4px; background: #1e293b; color: #fff; border: 1px solid #334155;}
 `;
 document.head.appendChild(dynamicStyles);
 
-// ==========================================
-// 0. OVOZ EFFEKTLARI
-// ==========================================
+// --- 0. OVOZ EFFEKTLARI ---
 const sndMove = new Audio('https://lichess1.org/assets/sound/standard/Move.ogg');
 const sndCapture = new Audio('https://lichess1.org/assets/sound/standard/Capture.ogg');
 const sndEnd = new Audio('https://lichess1.org/assets/sound/standard/GenericNotify.ogg');
 
 function unlockAudio() {
     try {
-        let p1 = sndMove.play(); if (p1) p1.then(() => { sndMove.pause(); sndMove.currentTime = 0; }).catch(() => {});
-        let p2 = sndCapture.play(); if (p2) p2.then(() => { sndCapture.pause(); sndCapture.currentTime = 0; }).catch(() => {});
-        let p3 = sndEnd.play(); if (p3) p3.then(() => { sndEnd.pause(); sndEnd.currentTime = 0; }).catch(() => {});
+        let p1 = sndMove.play(); if (p1 !== undefined) p1.then(() => { sndMove.pause(); sndMove.currentTime = 0; }).catch(() => {});
+        let p2 = sndCapture.play(); if (p2 !== undefined) p2.then(() => { sndCapture.pause(); sndCapture.currentTime = 0; }).catch(() => {});
+        let p3 = sndEnd.play(); if (p3 !== undefined) p3.then(() => { sndEnd.pause(); sndEnd.currentTime = 0; }).catch(() => {});
     } catch(e) {}
 }
 
@@ -635,15 +615,14 @@ function playSound(type) {
     } catch (e) {}
 }
 
-// ==========================================
-// 1. ASOSIY NAVIGATSIYA VA XOTIRA
-// ==========================================
+// --- 1. ASOSIY NAVIGATSIYA VA XOTIRA ---
 const tg = window.Telegram.WebApp;
 tg.expand();
 const user = tg.initDataUnsafe.user;
 const userName = user ? user.first_name : "Siz";
 if (user && document.querySelector('.pname')) document.querySelector('.pname').innerText = user.first_name;
 
+const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
 let aiDifficulty = null; 
 let gameTimeMins = null; 
@@ -652,32 +631,51 @@ let globalLastMove = null;
 let gameTimerInterval = null;
 let userTimeSec = 0;
 let aiTimeSec = 0;
-let isAITurn = false; 
 
-// --- CLOUD STORAGE VA STATISTIKA ---
+// --- YANGI: TELEGRAM CLOUD STORAGE TIZIMI ---
 let gameStats = { chess: { pts: 0, wins: 0 }, checkers: { pts: 0, wins: 0 } };
 
 function loadCloudStats() {
+    // Agar Telegram Cloud Storage qo'llab-quvvatlansa (Cloud da ishlaydi)
     if (tg.CloudStorage) {
         tg.CloudStorage.getItem('chess_checkers_stats', function(err, value) {
             if (!err && value) {
-                gameStats = { ...gameStats, ...JSON.parse(value) };
+                // Eski foydalanuvchi ma'lumotlarini yuklash
+                gameStats = JSON.parse(value);
                 updateStatsUI();
-            } else saveCloudStats();
+            } else {
+                // Yangi foydalanuvchi uchun 0 qilib saqlash
+                saveCloudStats();
+                setTimeout(() => {
+                    if (tg.showAlert) tg.showAlert("☁️ Telegram Cloud yoqildi!\n\n⚡ O'yinga xush kelibsiz! Kesh tozalansa ham ma'lumotlaringiz o'chmaydi.");
+                }, 500);
+            }
         });
     } else {
+        // Zaxira: Kompyuter brauzeri yoki eski Telegramlar uchun localStorage
         let savedStats = localStorage.getItem('chess_checkers_stats');
-        if (savedStats) gameStats = { ...gameStats, ...JSON.parse(savedStats) };
-        else localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats));
+        if (savedStats) {
+            gameStats = JSON.parse(savedStats);
+        } else {
+            localStorage.setItem('chess_checkers_stats', JSON.stringify(gameStats));
+        }
         updateStatsUI();
     }
 }
+
 function saveCloudStats() {
     let stringData = JSON.stringify(gameStats);
-    if (tg.CloudStorage) tg.CloudStorage.setItem('chess_checkers_stats', stringData);
+    // Asosiy: Telegram bulutiga yozish
+    if (tg.CloudStorage) {
+        tg.CloudStorage.setItem('chess_checkers_stats', stringData);
+    }
+    // Zaxira: Telefon xotirasiga yozish
     localStorage.setItem('chess_checkers_stats', stringData);
 }
+
+// Boshlang'ich qadamda ma'lumotlarni bulutdan yuklashni boshlaymiz
 loadCloudStats();
+// ---------------------------------------------
 
 function getLevelInfo(pts) {
     let level = Math.floor(pts / 100) + 1; 
@@ -706,7 +704,19 @@ function updateStatsUI() {
     if (ringCircle) ringCircle.setAttribute('stroke', info.color);
 }
 
-window.selGame = function(g) {
+function showScreen(n) {
+    SCREENS.forEach(s => {
+        const sc = document.getElementById('sc-' + s), nv = document.getElementById('nv-' + s);
+        if (sc) sc.classList.remove('active');
+        if (nv) nv.classList.remove('active');
+    });
+    const sc = document.getElementById('sc-' + n), nv = document.getElementById('nv-' + n);
+    if (sc) sc.classList.add('active');
+    if (nv) nv.classList.add('active');
+}
+
+function goBack() { showScreen('play'); }
+function selGame(g) {
     curGame = g;
     document.getElementById('gt-chess').classList.toggle('active', g === 'chess');
     document.getElementById('gt-check').classList.toggle('active', g === 'checkers');
@@ -719,8 +729,25 @@ window.selGame = function(g) {
 // 2. SHAXMAT MOTOR & MINIMAX AI
 // ==========================================
 let chessGame;
-try { chessGame = new Chess(); } catch (e) { console.error("Chess.js error"); }
+try { chessGame = new Chess(); } catch (e) { console.error("Chess.js yuklanmadi"); }
 let chessSelectedSq = null;
+let isAITurn = false; 
+
+const chessPieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
+function evalChess() { let val = 0; chessGame.board().forEach(row => { row.forEach(p => { if (p) val += chessPieceValues[p.type] * (p.color === 'w' ? 1 : -1); }); }); return val; }
+function minimaxChess(depth, alpha, beta, isMax) {
+    if (depth === 0 || chessGame.game_over()) return evalChess();
+    let moves = chessGame.moves();
+    if (isMax) {
+        let max = -Infinity;
+        for (let m of moves) { chessGame.move(m); max = Math.max(max, minimaxChess(depth-1, alpha, beta, false)); chessGame.undo(); alpha = Math.max(alpha, max); if (beta <= alpha) break; }
+        return max;
+    } else {
+        let min = Infinity;
+        for (let m of moves) { chessGame.move(m); min = Math.min(min, minimaxChess(depth-1, alpha, beta, true)); chessGame.undo(); beta = Math.min(beta, min); if (beta <= alpha) break; }
+        return min;
+    }
+}
 
 function renderChessBoard() {
     const wrap = document.getElementById('inner-board-wrap'); 
@@ -771,7 +798,9 @@ function renderChessBoard() {
                         checkGameOver(chessGame, 'chess'); 
                         
                         if (!chessGame.game_over()) {
-                            isAITurn = true; updateTimersUI(); setTimeout(makeChessAIMove, 800); 
+                            isAITurn = true; 
+                            updateTimersUI(); 
+                            setTimeout(makeChessAIMove, 800); 
                         }
                     } else {
                         chessSelectedSq = (cell && cell.color === 'w') ? coords : null;
@@ -791,11 +820,23 @@ function makeChessAIMove() {
     if (moves.length === 0) { isAITurn = false; return; }
     
     let bestMove = moves[Math.floor(Math.random() * moves.length)];
+    if (aiDifficulty !== 'easy') {
+        let bestVal = Infinity; 
+        let depth = aiDifficulty === 'medium' ? 1 : 2; 
+        for (let i = 0; i < moves.length; i++) {
+            chessGame.move(moves[i].san);
+            let boardVal = minimaxChess(depth - 1, -Infinity, Infinity, true);
+            chessGame.undo();
+            if (boardVal < bestVal) { bestVal = boardVal; bestMove = moves[i]; }
+        }
+    }
+    
     let executedMove = chessGame.move(bestMove.san);
     playSound(executedMove.captured ? 'capture' : 'move'); 
     globalLastMove = { from: executedMove.from, to: executedMove.to }; 
     
     if (aiTimeSec > 0) aiTimeSec -= 1;
+
     isAITurn = false; 
     renderChessBoard(); 
     checkGameOver(chessGame, 'chess');
@@ -814,6 +855,10 @@ class CheckersEngine {
         ];
         this.turn = 1; this.multiJumpSq = null;
     }
+    clone() {
+        let c = new CheckersEngine(); c.board = this.board.map(r => [...r]); c.turn = this.turn;
+        c.multiJumpSq = this.multiJumpSq ? {r: this.multiJumpSq.r, c: this.multiJumpSq.c} : null; return c;
+    }
     getMoves(player, specificSq = null) {
         let moves = [], jumps = [];
         for (let r=0; r<8; r++) {
@@ -829,8 +874,10 @@ class CheckersEngine {
                             if (p !== 0) {
                                 if (p * player > 0) break;
                                 if (p * player < 0) { if (jumped) break; jumped = {r: nr, c: nc}; }
-                            } else if (jumped) { jumps.push({from: {r,c}, to: {r:nr, c:nc}, jump: jumped}); if (!isKing) break; } 
-                            else if (!isKing) break; 
+                            } else if (jumped) {
+                                jumps.push({from: {r,c}, to: {r:nr, c:nc}, jump: jumped});
+                                if (!isKing) break; 
+                            } else if (!isKing) break; 
                             nr += d[0]; nc += d[1];
                         }
                     }
@@ -862,6 +909,28 @@ class CheckersEngine {
         this.multiJumpSq = null; this.turn *= -1; 
     }
     isGameOver() { return this.getMoves(1).length === 0 || this.getMoves(-1).length === 0; }
+}
+
+function evalCheckers(board) {
+    let val = 0;
+    for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+        if (board[r][c] === 1) val += 10; else if (board[r][c] === 2) val += 30;
+        else if (board[r][c] === -1) val -= 10; else if (board[r][c] === -2) val -= 30;
+    } return val;
+}
+function minimaxCheckers(game, depth, alpha, beta, isMax) {
+    if (depth === 0 || game.isGameOver()) return evalCheckers(game.board);
+    let moves = game.getMoves(game.turn, game.multiJumpSq);
+    if (moves.length === 0) return evalCheckers(game.board);
+    if (isMax) {
+        let max = -Infinity;
+        for (let m of moves) { let clone = game.clone(); clone.move(m); max = Math.max(max, minimaxCheckers(clone, depth-1, alpha, beta, clone.turn===1)); alpha = Math.max(alpha, max); if (beta <= alpha) break; }
+        return max;
+    } else {
+        let min = Infinity;
+        for (let m of moves) { let clone = game.clone(); clone.move(m); min = Math.min(min, minimaxCheckers(clone, depth-1, alpha, beta, clone.turn===1)); beta = Math.min(beta, min); if (beta <= alpha) break; }
+        return min;
+    }
 }
 
 let chkGame = new CheckersEngine();
@@ -914,9 +983,14 @@ function renderCheckersBoard() {
                         let move = validMoves.filter(m => m.to.r === r && m.to.c === c)[0];
                         if (move) {
                             chkGame.move(move); playSound(move.jump ? 'capture' : 'move'); globalLastMove = { from: move.from, to: move.to }; 
-                            chkSelectedSq = null; renderCheckersBoard(); checkGameOver(chkGame, 'checkers'); 
+                            chkSelectedSq = null; 
+                            
+                            renderCheckersBoard(); 
+                            checkGameOver(chkGame, 'checkers'); 
+                            
                             if (!chkGame.isGameOver() && chkGame.turn === -1) {
-                                isAITurn = true; updateTimersUI(); setTimeout(makeChkAIMove, 800); 
+                                isAITurn = true; updateTimersUI();
+                                setTimeout(makeChkAIMove, 800); 
                             }
                         } else {
                             if (!chkGame.multiJumpSq && pVal > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) chkSelectedSq = {r, c}; 
@@ -936,40 +1010,82 @@ function makeChkAIMove() {
     if (chkGame.turn === 1 || chkGame.isGameOver() || aiTimeSec <= 0) { isAITurn = false; return; }
     let moves = chkGame.getMoves(-1, chkGame.multiJumpSq);
     if (moves.length === 0) { isAITurn = false; return; }
+
     let bestMove = moves[Math.floor(Math.random() * moves.length)];
+    if (aiDifficulty !== 'easy') {
+        let bestVal = Infinity; let depth = aiDifficulty === 'medium' ? 1 : 3;
+        for (let i = 0; i < moves.length; i++) {
+            let clone = chkGame.clone(); clone.move(moves[i]);
+            let val = minimaxCheckers(clone, depth - 1, -Infinity, Infinity, clone.turn === 1);
+            if (val < bestVal) { bestVal = val; bestMove = moves[i]; }
+        }
+    }
+
     chkGame.move(bestMove); playSound(bestMove.jump ? 'capture' : 'move'); globalLastMove = { from: bestMove.from, to: bestMove.to }; 
+    
     if (aiTimeSec > 0) aiTimeSec -= 1;
-    renderCheckersBoard(); checkGameOver(chkGame, 'checkers');
-    if (chkGame.turn === -1 && !chkGame.isGameOver()) { setTimeout(makeChkAIMove, 800); } 
-    else { isAITurn = false; updateTimersUI(); }
+
+    renderCheckersBoard(); 
+    checkGameOver(chkGame, 'checkers');
+    
+    if (chkGame.turn === -1 && !chkGame.isGameOver()) { 
+        setTimeout(makeChkAIMove, 800); 
+    } else { 
+        isAITurn = false; 
+        updateTimersUI(); 
+    }
 }
 
 // ==========================================
 // 4. TAYMER VA O'YIN BOSHQARUVI
 // ==========================================
 function formatTime(sec) {
-    let m = Math.floor(sec / 60); let s = sec % 60; return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+    let m = Math.floor(sec / 60); let s = sec % 60;
+    return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
 }
+
 function updateTimersUI() {
     const ut = document.getElementById('user-timer'), at = document.getElementById('ai-timer');
     if (ut && at) {
         ut.innerText = formatTime(userTimeSec); at.innerText = formatTime(aiTimeSec);
-        if ((curGame === 'chess' && chessGame.turn() === 'w') || (curGame === 'checkers' && !isAITurn)) { ut.classList.add('active'); at.classList.remove('active'); } 
-        else { at.classList.add('active'); ut.classList.remove('active'); }
+        
+        if ((curGame === 'chess' && chessGame.turn() === 'w') || (curGame === 'checkers' && !isAITurn)) {
+            ut.classList.add('active'); at.classList.remove('active');
+        } else {
+            at.classList.add('active'); ut.classList.remove('active');
+        }
     }
 }
+
 function tickTimer() {
     let isOver = curGame === 'chess' ? chessGame.game_over() : chkGame.isGameOver();
-    if (isOver) { clearInterval(gameTimerInterval); return; }
+    if (isOver) { 
+        clearInterval(gameTimerInterval); 
+        return; 
+    }
+
     let isAiThinking = curGame === 'chess' ? (chessGame.turn() === 'b') : isAITurn;
-    if (isAiThinking) { aiTimeSec--; if (aiTimeSec <= 0) { aiTimeSec = 0; handleTimeout('ai'); } } 
-    else { userTimeSec--; if (userTimeSec <= 0) { userTimeSec = 0; handleTimeout('user'); } }
+
+    if (isAiThinking) {
+        aiTimeSec--;
+        if (aiTimeSec <= 0) { aiTimeSec = 0; handleTimeout('ai'); }
+    } else {
+        userTimeSec--;
+        if (userTimeSec <= 0) { userTimeSec = 0; handleTimeout('user'); }
+    }
     updateTimersUI();
 }
-function handleTimeout(loser) { clearInterval(gameTimerInterval); checkGameOver(curGame === 'chess' ? chessGame : chkGame, curGame, loser); }
+
+function handleTimeout(loser) {
+    clearInterval(gameTimerInterval);
+    checkGameOver(curGame === 'chess' ? chessGame : chkGame, curGame, loser);
+}
 
 function checkGameOver(gameObj, type, timeoutLoser = null) {
-    let isOver = false; let title = "", sub = "", color = ""; let isWin = false, isLose = false;
+    let isOver = false;
+    let title = "", sub = "", color = "";
+    let isWin = false, isLose = false;
+
     if (timeoutLoser) {
         isOver = true;
         if (timeoutLoser === 'user') { title = "⏱ Vaqt tugadi!"; sub = "Sizda vaqt tugadi. -10 pts"; color = "var(--red)"; isLose = true; } 
@@ -977,6 +1093,7 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
     } else {
         isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
         if (!isOver) return; 
+
         if (type === 'chess') {
             if (gameObj.in_checkmate()) {
                 if (gameObj.turn() === 'b') { title = "🏆 Checkmate!"; sub = "Siz g'alaba qozondingiz! +20 pts"; color = "var(--gold)"; isWin = true; } 
@@ -989,141 +1106,61 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
             else { title = "🤝 Durang"; sub = "O'yin tugadi."; color = "#60a5fa"; }
         }
     }
+
     if (gameTimerInterval) clearInterval(gameTimerInterval); 
     playSound('end'); 
+
     if (isWin) { gameStats[type].pts += 20; gameStats[type].wins += 1; } 
     else if (isLose) { gameStats[type].pts -= 10; if (gameStats[type].pts < 0) gameStats[type].pts = 0; }
+    
+    // --- YANGI: NATIJALARNI BULUTGA SAQLASH ---
     saveCloudStats();
-    
-    // Qotib qolmasligi uchun overlay ni xavfsiz qo'shish
-    const wrap = document.getElementById('board-wrap');
-    if(wrap) {
-        const overlay = document.createElement('div'); overlay.className = 'end-overlay';
-        overlay.innerHTML = `<div class="end-title" style="color:${color}">${title}</div><div class="end-sub">${sub}</div><button class="end-btn" onclick="startVsAI()">Qayta o'ynash</button>`;
-        wrap.appendChild(overlay);
-    }
+
+    const wrap = document.getElementById('inner-board-wrap') || document.getElementById('board-wrap');
+    const overlay = document.createElement('div'); overlay.className = 'end-overlay';
+    overlay.innerHTML = `<div class="end-title" style="color:${color}">${title}</div><div class="end-sub">${sub}</div><button class="end-btn" onclick="startVsAI()">Qayta o'ynash</button>`;
+    wrap.appendChild(overlay);
 }
 
 // ==========================================
-// 5. CHAT VA SMAYLLAR (TEMPLATEDAGIDEK UI)
+// 5. 2-BOSQICHLI TANLASH EKRANI
 // ==========================================
-const EMOTES = ['😄', '😒', '😮', '😤', '😂'];
-const TEXT_MSGS = ['Nice!', 'Hello!', 'Hurry up!', 'Ouch!'];
-
-// Chat UI ni doska ostiga joylash
-function buildGameUI() {
-    return `
-        <div class="game-header">
-           <div style="display:flex; align-items:center; gap:8px;">🤖 <span>Kompyuter (AI)</span></div>
-           <div class="timer-box" id="ai-timer">${formatTime(aiTimeSec)}</div>
-        </div>
-        
-        <div class="fs-board-wrap" id="inner-board-wrap"></div>
-        
-        <div class="game-footer" style="margin-top:2px;">
-           <div style="display:flex; align-items:center; gap:8px;">👤 <span>${userName}</span></div>
-           <div class="timer-box active" id="user-timer">${formatTime(userTimeSec)}</div>
-        </div>
-        
-        <div id="bubble-ai" class="chat-bubble bubble-ai"></div>
-        <div id="bubble-user" class="chat-bubble bubble-user"></div>
-
-        <div class="chat-ui-wrapper">
-            <div class="chat-row" style="display:none;" id="chat-options-row">
-                <div class="chat-options">
-                    ${EMOTES.map((e, i) => `<button class="emote-btn" onclick="sendChat('emote', ${i})">${e}</button>`).join('')}
-                    <div style="width:1px; height:20px; background:rgba(255,255,255,0.2); margin: 0 5px;"></div>
-                    ${TEXT_MSGS.map((m, i) => `<button class="text-msg-btn" onclick="sendChat('text', ${i})">${m}</button>`).join('')}
-                </div>
-            </div>
-            <div class="chat-row" style="justify-content: flex-start;">
-                <button class="chat-icon-btn" onclick="toggleChatPanel()">💬</button>
-            </div>
-        </div>
-    `;
-}
-
-window.toggleChatPanel = function() {
-    const row = document.getElementById('chat-options-row');
-    if(row) row.style.display = row.style.display === 'none' ? 'flex' : 'none';
-}
-
-window.sendChat = function(type, idx) {
-    let msg = type === 'emote' ? EMOTES[idx] : TEXT_MSGS[idx];
-    document.getElementById('chat-options-row').style.display = 'none'; // panelni yopish
-    showBubble('user', msg);
-    
-    // AI javob qaytaradi (1-2 sekunddan keyin)
-    setTimeout(() => {
-        if(chessGame.game_over() || chkGame.isGameOver() || aiTimeSec <= 0) return;
-        let aiReply = "";
-        if (type === 'emote') aiReply = EMOTES[Math.floor(Math.random() * EMOTES.length)];
-        else {
-            if(msg === 'Nice!') aiReply = "Thanks!";
-            else if(msg === 'Hurry up!') aiReply = "Thinking...";
-            else aiReply = TEXT_MSGS[Math.floor(Math.random() * TEXT_MSGS.length)];
-        }
-        showBubble('ai', aiReply);
-    }, 1000 + Math.random() * 1500);
-}
-
-let bubbleTimers = { user: null, ai: null };
-function showBubble(player, text) {
-    const el = document.getElementById('bubble-' + player);
-    if(!el) return;
-    el.innerText = text;
-    el.classList.add('show');
-    
-    if(bubbleTimers[player]) clearTimeout(bubbleTimers[player]);
-    bubbleTimers[player] = setTimeout(() => {
-        el.classList.remove('show');
-    }, 3000); // 3 sekund turib o'chadi
-}
-
-// ==========================================
-// 6. TANLASH EKRANLARI VA MUAMMONI HAL QILISH
-// ==========================================
-function cleanOldModalJunk() {
-    // Eski "Searching..." yozuvlarini va spinnnerni domdan tozalash
-    const modal = document.getElementById('match-modal');
-    if (!modal) return;
-    Array.from(modal.querySelectorAll('*')).forEach(el => {
-        if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
-            if (el.textContent.includes('Searching') || el.textContent.includes('takes a few seconds')) {
-                el.style.display = 'none';
-            }
-        }
-        if (el.classList.contains('spinner') || el.tagName.toLowerCase() === 'img') {
-            el.style.display = 'none';
-        }
-    });
-}
-
 function renderDifficultySelection() {
     const wrap = document.getElementById('board-wrap');
-    if(!wrap) return;
     wrap.className = 'diff-mode-wrap'; wrap.style.cssText = ''; 
     wrap.innerHTML = `
         <div style="width: 100%; max-width: 320px;">
             <div class="diff-title">1. RAQIB DARAJASINI TANLANG</div>
-            <button class="diff-btn easy" onclick="selectDifficulty('easy')">🟢 Oson</button>
-            <button class="diff-btn medium" onclick="selectDifficulty('medium')">🟡 O'rta</button>
-            <button class="diff-btn hard" onclick="selectDifficulty('hard')">🔴 Qiyin</button>
+            <button class="diff-btn easy" onclick="selectDifficulty('easy')">🟢 Oson <span style="font-size:12px; font-weight:500">(Yangi o'rganuvchilar)</span></button>
+            <button class="diff-btn medium" onclick="selectDifficulty('medium')">🟡 O'rta <span style="font-size:12px; font-weight:500">(Tajribalilar)</span></button>
+            <button class="diff-btn hard" onclick="selectDifficulty('hard')">🔴 Qiyin <span style="font-size:12px; font-weight:500">(Haqiqiy strateg)</span></button>
         </div>
     `;
 }
 
 window.selectDifficulty = function(level) {
     aiDifficulty = level;
-    let timeHTML = `<button class="diff-btn easy" onclick="selectTime(3)">⚡ 3 Daqiqa</button>
-                    <button class="diff-btn medium" onclick="selectTime(5)">⏱ 5 Daqiqa</button>
-                    <button class="diff-btn hard" onclick="selectTime(10)">🕰 10 Daqiqa</button>`;
+    let timeHTML = '';
+    if (curGame === 'chess') {
+        timeHTML = `
+            <button class="diff-btn easy" onclick="selectTime(3)">⚡ 3 Daqiqa <span style="font-size:12px; font-weight:500">(Blitz)</span></button>
+            <button class="diff-btn medium" onclick="selectTime(5)">⏱ 5 Daqiqa <span style="font-size:12px; font-weight:500">(Blitz)</span></button>
+            <button class="diff-btn hard" onclick="selectTime(10)">🕰 10 Daqiqa <span style="font-size:12px; font-weight:500">(Rapid)</span></button>
+        `;
+    } else {
+        timeHTML = `
+            <button class="diff-btn easy" onclick="selectTime(3)">⚡ 3 Daqiqa <span style="font-size:12px; font-weight:500">(Tezkor)</span></button>
+            <button class="diff-btn medium" onclick="selectTime(5)">⏱ 5 Daqiqa <span style="font-size:12px; font-weight:500">(Standart)</span></button>
+            <button class="diff-btn hard" onclick="selectTime(10)">🕰 10 Daqiqa <span style="font-size:12px; font-weight:500">(Klassik)</span></button>
+        `;
+    }
 
-    document.getElementById('board-wrap').innerHTML = `
+    const wrap = document.getElementById('board-wrap');
+    wrap.innerHTML = `
         <div style="width: 100%; max-width: 320px;">
             <div class="diff-title">2. VAQTNI TANLANG</div>
             ${timeHTML}
-            <button class="start-game-btn active" style="background:transparent; border:1px solid var(--border); margin-top:20px;" onclick="renderDifficultySelection()">⬅️ Ortga</button>
+            <button class="start-game-btn active" style="background:transparent; border:1px solid var(--border); margin-top:20px;" onclick="renderDifficultySelection()">⬅️ Darajaga qaytish</button>
         </div>
     `;
 }
@@ -1134,61 +1171,77 @@ window.selectTime = function(mins) {
 }
 
 window.finalStartGame = function() {
-    unlockAudio(); globalLastMove = null; isAITurn = false;
+    unlockAudio(); 
+    globalLastMove = null; isAITurn = false;
     if (gameTimerInterval) clearInterval(gameTimerInterval);
-    userTimeSec = gameTimeMins * 60; aiTimeSec = gameTimeMins * 60;
+    
+    userTimeSec = gameTimeMins * 60;
+    aiTimeSec = gameTimeMins * 60;
     
     const wrap = document.getElementById('board-wrap');
-    wrap.innerHTML = buildGameUI(); // Yangi Chatli UI ni qo'shamiz
+    wrap.innerHTML = `
+        <div class="game-header">
+           <div>🤖 Kompyuter (AI)</div>
+           <div class="timer-box" id="ai-timer">${formatTime(aiTimeSec)}</div>
+        </div>
+        <div class="fs-board-wrap" id="inner-board-wrap"></div>
+        <div class="game-footer">
+           <div>👤 ${userName}</div>
+           <div class="timer-box active" id="user-timer">${formatTime(userTimeSec)}</div>
+        </div>
+    `;
     wrap.className = 'timer-wrap'; 
 
-    if (curGame === 'chess') { chessGame = new Chess(); chessSelectedSq = null; renderChessBoard(); } 
-    else { chkGame.reset(); chkSelectedSq = null; renderCheckersBoard(); }
+    if (curGame === 'chess') {
+        if (typeof Chess !== 'undefined') { chessGame = new Chess(); chessSelectedSq = null; renderChessBoard(); }
+    } else {
+        chkGame.reset(); chkSelectedSq = null; renderCheckersBoard();
+    }
+
     gameTimerInterval = setInterval(tickTimer, 1000); 
 }
 
-// Tugmalardan chaqiriladigan Asosiy Funksiya
-window.startVsAI = function() {
+function startVsAI() {
     const modal = document.getElementById('match-modal');
     if (!modal) return;
-    
-    cleanOldModalJunk(); // Eski axlatlarni tozalash!
-    
     modal.classList.add('open', 'fs-modal');
+
     const checkTab = document.getElementById('gt-check');
     curGame = (checkTab && checkTab.classList.contains('active')) ? 'checkers' : 'chess';
-    
+
     const titleElements = modal.querySelectorAll('.mtitle');
     if(titleElements.length > 0) titleElements[0].innerText = curGame === 'chess' ? "Shaxmat vs AI" : "Shashka vs AI";
+
+    const icon = document.getElementById('m-icon');
+    if (icon) { icon.style.display = 'none'; if(icon.nextElementSibling) icon.nextElementSibling.style.display = 'none'; }
+
+    modal.querySelectorAll('button').forEach(btn => {
+        if (btn.innerText.includes('Create Room') || btn.innerText.includes('Cancel')) btn.style.display = 'none';
+    });
     
-    // board-wrap ni modal ichidan izlash yoki yasash
-    let wrap = document.getElementById('board-wrap');
-    if(!wrap) {
-        wrap = document.createElement('div');
-        wrap.id = 'board-wrap';
-        modal.querySelector('.modal').appendChild(wrap);
-    }
-    
+    const closeX = modal.querySelector('.m-close');
+    if(closeX) closeX.setAttribute('onclick', 'closeModal()');
+
     renderDifficultySelection(); 
 }
 
-// Eski HTML dagi onClick larni buzilmasligi uchun
-window.showMatchModal = function() { startVsAI(); } 
+function showMatchModal() { startVsAI(); }
 
-window.closeModal = function() { 
+function closeModal() { 
     const modal = document.getElementById('match-modal');
     if(modal) {
         modal.classList.remove('open', 'fs-modal');
         const titleElements = modal.querySelectorAll('.mtitle');
         if(titleElements.length > 0) titleElements[0].innerText = "Finding Match...";
-        
-        // Yopilganda eski narsalarni tiklash (agar kerak bo'lsa)
-        modal.querySelectorAll('.m-icon, p, h3, h4, .spinner, img[src*="spin"]').forEach(el => el.style.display = '');
+        const icon = document.getElementById('m-icon');
+        if (icon) { icon.style.display = 'block'; if(icon.nextElementSibling) icon.nextElementSibling.style.display = 'block'; }
+        modal.querySelectorAll('button').forEach(btn => btn.style.display = '');
     }
     if (gameTimerInterval) clearInterval(gameTimerInterval); 
 }
 
 updateStatsUI();
+showScreen('play');
 </script>
 </body>
 </html>
