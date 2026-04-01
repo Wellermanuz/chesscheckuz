@@ -327,7 +327,6 @@ body::before {
 
 .mbadge.hot { background: rgba(239,68,68,.2); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
 .mbadge.new { background: rgba(34,197,94,.2); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
-.mbadge.rank { background: rgba(245,158,11,.2); color: var(--gold); border: 1px solid rgba(245,158,11,.3); }
 .mbadge.ai { background: rgba(139,92,246,.2); color: #a78bfa; border: 1px solid rgba(139,92,246,.3); }
 .mbadge.local { background: rgba(96,165,250,.2); color: #93c5fd; border: 1px solid rgba(96,165,250,.3); }
 
@@ -649,6 +648,8 @@ body::before {
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+  /* For smooth flipping transition */
+  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .fs-board-wrap::before {
@@ -666,7 +667,6 @@ body::before {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   grid-template-rows: repeat(8, 1fr);
-  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .fs-sq {
@@ -684,19 +684,18 @@ body::before {
   .fs-sq { font-size: 38px; }
 }
 
-/* The magic flip CSS for Pass & Play */
-.board-flipped {
+/* The magic flip CSS Technique */
+/* If this class is on .fs-board-wrap, rotate 180deg */
+.rotated-board {
   transform: rotate(180deg);
 }
 
-.board-flipped .fs-sq > span {
+/* We must rotate the content back 180deg so piece glyphs aren't upside down */
+.rotated-board .fs-sq span,
+.rotated-board .fs-sq div {
   transform: rotate(-180deg);
-  transition: transform 0.6s;
-}
-
-.board-flipped .fs-sq > div {
-  transform: rotate(-180deg);
-  transition: transform 0.6s;
+  /* Smoothly spin glyphs too */
+  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .last-move::before {
@@ -1373,6 +1372,7 @@ const LEAGUES = [
 ];
 
 let curGame = 'chess';
+// Critical variable: controls logic within render functions
 let gameMode = 'ai'; 
 let appState = {
   stats: {
@@ -1400,7 +1400,7 @@ function getLeagueByRating(r) {
 
 function loadState() {
   return new Promise(res => {
-    let raw = localStorage.getItem('cc_state_v5');
+    let raw = localStorage.getItem('cc_state_v6');
     if (raw) {
       try {
         appState = { ...appState, ...JSON.parse(raw) };
@@ -1413,7 +1413,7 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem('cc_state_v5', JSON.stringify(appState));
+  localStorage.setItem('cc_state_v6', JSON.stringify(appState));
   updateUI();
 }
 
@@ -1653,7 +1653,7 @@ class CheckersEngine {
       [0,1,0,1,0,1,0,1],
       [1,0,1,0,1,0,1,0]
     ];
-    this.turn = 1;
+    this.turn = 1; // 1 = White (bottom), -1 = Black (top)
     this.multiJumpSq = null;
   }
   
@@ -1676,7 +1676,7 @@ class CheckersEngine {
           
           let isKing = Math.abs(this.board[r][c]) === 2;
           
-          // Check Jumps
+          // Check Jumps (mandatory captures)
           for (let d of [[1,-1],[1,1],[-1,-1],[-1,1]]) {
             let jumped = null;
             let nr = r + d[0];
@@ -1685,25 +1685,28 @@ class CheckersEngine {
             while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
               let p = this.board[nr][nc];
               if (p !== 0) {
-                if (p * player > 0) break;
+                if (p * player > 0) break; // Own piece
                 if (p * player < 0) {
-                  if (jumped) break;
+                  if (jumped) break; // Already jumped something in this line
                   jumped = { r: nr, c: nc };
                 }
               } else if (jumped) {
+                // Landing on empty square after jumping opponent
                 jumps.push({ from: { r, c }, to: { r: nr, c: nc }, jump: jumped });
-                if (!isKing) break;
+                if (!isKing) break; // Non-kings only land immediately
               } else if (!isKing) {
-                break;
+                break; // Non-kings can't fly over empty squares to find jump
               }
+              // Kings continue flying
               nr += d[0];
               nc += d[1];
             }
           }
           
-          // Check Regular Moves
+          // Check Regular Moves (only if no jumps exist)
           if (!specSq) {
             if (!isKing) {
+              // Direction non-kings can move
               let fDirs = player === 1 ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]];
               for (let d of fDirs) {
                 let nr = r + d[0];
@@ -1713,6 +1716,7 @@ class CheckersEngine {
                 }
               }
             } else {
+              // Kings fly in 4 directions
               for (let d of [[1,-1],[1,1],[-1,-1],[-1,1]]) {
                 let nr = r + d[0];
                 let nc = c + d[1];
@@ -1738,22 +1742,25 @@ class CheckersEngine {
       this.board[m.jump.r][m.jump.c] = 0;
     }
     
+    // Kinging logic
     if (Math.abs(p) === 1 && ((p === 1 && m.to.r === 0) || (p === -1 && m.to.r === 7))) {
       p *= 2;
     }
     
     this.board[m.to.r][m.to.c] = p;
     
+    // Multi-jump logic: check if same piece must jump again immediately
     if (m.jump && this.getMoves(this.turn, m.to).length > 0) {
       this.multiJumpSq = m.to;
-      return;
+      return; // Do not end turn
     }
     
     this.multiJumpSq = null;
-    this.turn *= -1;
+    this.turn *= -1; // End turn
   }
   
   isGameOver() {
+    // Current player has no valid moves
     return this.getMoves(1).length === 0 || this.getMoves(-1).length === 0;
   }
 }
@@ -1767,7 +1774,7 @@ let gameTimeMins = 3;
 let gameTimerInterval = null;
 let userTimeSec = 0;
 let aiTimeSec = 0;
-let isAITurn = false;
+let isAITurn = false; // Flag to block player input during AI thought
 
 const chessVals = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
 
@@ -1781,6 +1788,7 @@ function evalChess(g) {
   return v;
 }
 
+// Minimax with Alpha-Beta Pruning for Chess
 function minimaxChess(depth, alpha, beta, isMax) {
   if (depth === 0 || chessGame.game_over()) return evalChess(chessGame);
   const ms = chessGame.moves();
@@ -1792,7 +1800,7 @@ function minimaxChess(depth, alpha, beta, isMax) {
       max = Math.max(max, minimaxChess(depth - 1, alpha, beta, false));
       chessGame.undo();
       alpha = Math.max(alpha, max);
-      if (beta <= alpha) break;
+      if (beta <= alpha) break; // Pruning
     }
     return max;
   } else {
@@ -1802,13 +1810,14 @@ function minimaxChess(depth, alpha, beta, isMax) {
       min = Math.min(min, minimaxChess(depth - 1, alpha, beta, true));
       chessGame.undo();
       beta = Math.min(beta, min);
-      if (beta <= alpha) break;
+      if (beta <= alpha) break; // Pruning
     }
     return min;
   }
 }
 
 function makeChessAIMove() {
+  // Guard clause: ensure we are in AI mode and it is actually AI's turn
   if (gameMode !== 'ai' || !chessGame || chessGame.game_over() || aiTimeSec <= 0) {
     isAITurn = false;
     return;
@@ -1822,8 +1831,10 @@ function makeChessAIMove() {
   
   let best = moves[Math.floor(Math.random() * moves.length)];
   
+  // Complexity based on selected difficulty
   if (aiDifficulty !== 'easy') {
     let bVal = Infinity;
+    // Look ahead 1 (Medium) or 2 (Hard) moves
     const d = aiDifficulty === 'medium' ? 1 : 2;
     for (const mv of moves) {
       chessGame.move(mv.san);
@@ -1836,6 +1847,7 @@ function makeChessAIMove() {
     }
   }
   
+  // Execute final AI move
   const ex = chessGame.move(best.san);
   if (ex) {
     haptic(ex.captured ? 'medium' : 'light');
@@ -1843,7 +1855,7 @@ function makeChessAIMove() {
     globalLastMove = { from: ex.from, to: ex.to };
   }
   
-  isAITurn = false;
+  isAITurn = false; // Block lifted
   renderChessBoard();
   renderTurnBanner();
   updateTimersUI();
@@ -1863,6 +1875,7 @@ function evalCheckers(b) {
   return v;
 }
 
+// Minimax with Alpha-Beta for Checkers
 function minimaxCheckers(g, depth, alpha, beta, isMax) {
   if (depth === 0 || g.isGameOver()) return evalCheckers(g.board);
   const ms = g.getMoves(g.turn, g.multiJumpSq);
@@ -1892,6 +1905,7 @@ function minimaxCheckers(g, depth, alpha, beta, isMax) {
 }
 
 function makeChkAIMove() {
+  // Guard clause
   if (gameMode !== 'ai' || !chkGame || chkGame.isGameOver() || aiTimeSec <= 0 || chkGame.turn !== -1) {
     isAITurn = false;
     return;
@@ -1907,6 +1921,7 @@ function makeChkAIMove() {
   
   if (aiDifficulty !== 'easy') {
     let bVal = Infinity;
+    // Look ahead 1 (Medium) or 3 (Hard) moves
     const d = aiDifficulty === 'medium' ? 1 : 3;
     for (const m of ms) {
       const c = chkGame.clone();
@@ -1919,6 +1934,7 @@ function makeChkAIMove() {
     }
   }
   
+  // Execute final AI move
   chkGame.move(best);
   haptic(best.jump ? 'medium' : 'light');
   playSound(best.jump ? 'capture' : 'move');
@@ -1928,11 +1944,12 @@ function makeChkAIMove() {
   renderTurnBanner();
   updateTimersUI();
   
+  // Check multi-jump (if AI must jump again, recursively call AI move)
   if (chkGame.turn === -1 && !chkGame.isGameOver()) {
     isAITurn = true;
     setTimeout(makeChkAIMove, 700);
   } else {
-    isAITurn = false;
+    isAITurn = false; // AI turn truly ended
     checkGameOver(chkGame, 'checkers');
   }
 }
@@ -1950,16 +1967,23 @@ function getPieceTheme() {
 
 function renderChessBoard() {
   const wrap = document.getElementById('inner-board-wrap');
-  if (!wrap || !chessGame) return;
+  // Check for picture bug where inner-board-wrap is missing or hidden
+  if (!wrap || !chessGame) {
+      console.error("Board container missing.");
+      return;
+  }
   
   wrap.innerHTML = '';
   const boardEl = document.createElement('div');
   boardEl.className = 'fs-board';
   
-  const turn = chessGame.turn();
-  // IN PASS & PLAY MODE, WE ROTATE THE BOARD FOR BLACK
+  // The magic flip technique check:
+  // In Pass & Play mode, if it's Black's turn, rotate the visual board 180 degrees.
+  const turn = chessGame.turn(); // 'w' or 'b'
   if (gameMode === 'pass' && turn === 'b') {
-    boardEl.classList.add('board-flipped');
+    wrap.classList.add('rotated-board');
+  } else {
+    wrap.classList.remove('rotated-board');
   }
   
   const vMoves = chessSelectedSq ? chessGame.moves({ square: chessSelectedSq, verbose: true }) : [];
@@ -2006,20 +2030,25 @@ function renderChessBoard() {
         sq.appendChild(ind);
       }
       
+      // User click handler
       sq.onclick = () => {
-        if (chessGame.game_over()) return;
+        // Block all clicks if game is over or AI is thinking
+        if (chessGame.game_over() || isAITurn) return;
         
-        // Block player clicks if it's AI's turn
-        if (gameMode === 'ai' && turn === 'b') return;
-        if (gameMode === 'puzzle' && puzzleCtx && turn !== puzzleCtx.playerTurn) return;
+        if (gameMode === 'ai' && turn === 'b') return; // AI Turn
+        if (gameMode === 'puzzle' && puzzleCtx && turn !== puzzleCtx.playerTurn) return; // Forced move
 
         if (!chessSelectedSq) {
-          // Allow picking a piece if it matches current turn color
+          // Selecting a piece
           if (cell && cell.color === turn) {
             chessSelectedSq = coords;
             renderChessBoard();
+          } else if (cell) {
+             // Wrong color
+             playSound('buzz');
           }
         } else {
+          // Attempting a move
           if (vTargs.includes(coords)) {
             const mObj = chessGame.move({ from: chessSelectedSq, to: coords, promotion: 'q' });
             if (!mObj) {
@@ -2032,34 +2061,41 @@ function renderChessBoard() {
             playSound(mObj.captured ? 'capture' : 'move');
             globalLastMove = { from: mObj.from, to: mObj.to };
             chessSelectedSq = null;
-            renderChessBoard();
+            renderChessBoard(); // Will trigger board flip CSS if P&P
 
-            // Check game modes
             if (gameMode === 'puzzle') {
               return onPuzzleMove({ kind: 'chess', san: mObj.san });
             }
             
             if (gameMode === 'pass') {
-              // Strictly Human vs Human. Do not call AI.
+              // Human P1 vs Human P2
               renderTurnBanner();
               checkGameOver(chessGame, 'chess');
-              return;
+              return; // Strict return, do not invoke AI
             }
             
-            // If AI Mode
+            // If AI mode
             if (gameMode === 'ai') {
               checkGameOver(chessGame, 'chess');
               if (!chessGame.game_over()) {
                 isAITurn = true;
                 renderTurnBanner();
                 updateTimersUI();
+                // Call AI logic after short delay
                 setTimeout(makeChessAIMove, 700);
               }
             }
           } else {
-            // Select another piece instead
-            chessSelectedSq = (cell && cell.color === turn) ? coords : null;
-            renderChessBoard();
+            // Picked different square
+            if (cell && cell.color === turn) {
+               // Different piece of same color
+               chessSelectedSq = coords;
+               renderChessBoard();
+            } else {
+               // Empty or wrong piece - deselect
+               chessSelectedSq = null;
+               renderChessBoard();
+            }
           }
         }
       };
@@ -2073,7 +2109,11 @@ function renderChessBoard() {
 
 function renderCheckersBoard() {
   const wrap = document.getElementById('inner-board-wrap');
-  if (!wrap) return;
+  // Picture bug safeguard
+  if (!wrap) {
+      console.error("Checkers container missing.");
+      return;
+  }
   
   wrap.innerHTML = '';
   const boardEl = document.createElement('div');
@@ -2081,14 +2121,16 @@ function renderCheckersBoard() {
   
   const turn = chkGame.turn;
   
-  // IN PASS & PLAY MODE, WE ROTATE THE BOARD FOR BLACK
+  // Pass & Play Visual Flip
   if (gameMode === 'pass' && turn === -1) {
-    boardEl.classList.add('board-flipped');
+    wrap.classList.add('rotated-board');
+  } else {
+    wrap.classList.remove('rotated-board');
   }
 
   const aMoves = chkGame.getMoves(turn, chkGame.multiJumpSq);
-  const isM = aMoves.length > 0 && aMoves[0].jump;
-  const mFroms = isM ? aMoves.map(m => m.from.r + ',' + m.from.c) : [];
+  const isMandatory = aMoves.length > 0 && aMoves[0].jump;
+  const mFroms = isMandatory ? aMoves.map(m => m.from.r + ',' + m.from.c) : [];
   const vMoves = chkSelectedSq ? aMoves.filter(m => m.from.r === chkSelectedSq.r && m.from.c === chkSelectedSq.c) : [];
   const vTargs = vMoves.map(m => m.to.r + ',' + m.to.c);
   
@@ -2129,24 +2171,29 @@ function renderCheckersBoard() {
       }
       
       if (vTargs.includes(r + ',' + c)) {
+        const isCapture = (chkGame.board[r][c] !== 0 || vMoves.find(m => m.to.r === r && m.to.c === c)?.jump);
         const ind = document.createElement('div');
-        ind.className = (chkGame.board[r][c] !== 0 || vMoves.find(m => m.to.r === r && m.to.c === c)?.jump) ? 'move-cap' : 'move-dot';
+        ind.className = isCapture ? 'move-cap' : 'move-dot';
         sq.appendChild(ind);
       }
       
       sq.onclick = () => {
-        if (chkGame.isGameOver()) return;
+        if (chkGame.isGameOver() || isAITurn) return;
         
-        // Block player clicks if it's AI's turn
+        // AI or forced turn blocking
         if (gameMode === 'ai' && turn === -1) return;
         if (gameMode === 'puzzle' && puzzleCtx && turn !== puzzleCtx.playerTurn) return;
         
         if (!chkSelectedSq) {
+          // Select piece
           if (pVal * turn > 0 && aMoves.some(m => m.from.r === r && m.from.c === c)) {
             chkSelectedSq = { r, c };
             renderCheckersBoard();
+          } else if (pVal !== 0) {
+             playSound('buzz');
           }
         } else {
+          // Commit move
           const mv = vMoves.find(m => m.to.r === r && m.to.c === c);
           if (mv) {
             chkGame.move(mv);
@@ -2154,7 +2201,6 @@ function renderCheckersBoard() {
             playSound(mv.jump ? 'capture' : 'move');
             globalLastMove = { kind: 'checkers', from: mv.from, to: mv.to };
             chkSelectedSq = null;
-            
             renderCheckersBoard();
             
             if (gameMode === 'puzzle') {
@@ -2162,15 +2208,16 @@ function renderCheckersBoard() {
             }
             
             if (gameMode === 'pass') {
-              // Strictly Human vs Human. Do not call AI.
+              // strict local PvP
               renderTurnBanner();
               checkGameOver(chkGame, 'checkers');
               return;
             }
             
-            // If AI mode
+            // AI mode logic
             if (gameMode === 'ai') {
               checkGameOver(chkGame, 'checkers');
+              // Only call AI if turn switched to black
               if (!chkGame.isGameOver() && chkGame.turn === -1) {
                 isAITurn = true;
                 renderTurnBanner();
@@ -2179,10 +2226,14 @@ function renderCheckersBoard() {
               }
             }
           } else {
-            if (!chkGame.multiJumpSq && pVal * turn > 0 && aMoves.some(m => m.from.r === r && m.from.c === c)) {
-              chkSelectedSq = { r, c };
-            } else if (!chkGame.multiJumpSq) {
-              chkSelectedSq = null;
+            // Cannot change selection during mandatory multi-jump
+            if (!chkGame.multiJumpSq) {
+               // Different friendly piece
+               if (pVal * turn > 0 && aMoves.some(m => m.from.r === r && m.from.c === c)) {
+                  chkSelectedSq = { r, c };
+               } else {
+                  chkSelectedSq = null;
+               }
             }
             renderCheckersBoard();
           }
@@ -2226,8 +2277,8 @@ function updateTimersUI() {
   ut.innerText = fTime(userTimeSec);
   at.innerText = fTime(aiTimeSec);
   
-  const uAct = (curGame === 'chess' && chessGame.turn() === 'w' && !isAITurn) || 
-               (curGame === 'checkers' && chkGame.turn === 1 && !isAITurn);
+  // User is active if AI isn't thinking and turn is White
+  const uAct = !isAITurn && ((curGame === 'chess' && chessGame.turn() === 'w') || (curGame === 'checkers' && chkGame.turn === 1));
                
   ut.classList.toggle('active', uAct);
   at.classList.toggle('active', !uAct);
@@ -2236,18 +2287,13 @@ function updateTimersUI() {
 function tickTimer() {
   if (gameMode !== 'ai') return;
   
-  const isO = (curGame === 'chess' && chessGame.game_over()) || 
-              (curGame === 'checkers' && chkGame.isGameOver());
-              
-  if (isO) {
-    clearAiTimers();
-    return;
-  }
+  // Stop if over
+  const isO = (curGame === 'chess' && chessGame.game_over()) || (curGame === 'checkers' && chkGame.isGameOver());
+  if (isO) return clearAiTimers();
   
-  const aiT = (curGame === 'chess' && chessGame.turn() === 'b') || 
-              (curGame === 'checkers' && chkGame.turn === -1);
+  const isAiT = (curGame === 'chess' && chessGame.turn() === 'b') || (curGame === 'checkers' && chkGame.turn === -1);
               
-  if (aiT) {
+  if (isAiT) {
     aiTimeSec--;
     if (aiTimeSec <= 0) {
       aiTimeSec = 0;
@@ -2264,29 +2310,29 @@ function tickTimer() {
   updateTimersUI();
 }
 
-function handleTimeout(loser) {
+function handleTimeout(loserType) {
   clearAiTimers();
-  checkGameOver(curGame === 'chess' ? chessGame : chkGame, curGame, loser);
+  checkGameOver(curGame === 'chess' ? chessGame : chkGame, curGame, loserType);
 }
 
 function checkGameOver(g, type, toLoser = null) {
-  if (gameMode === 'puzzle') return;
+  if (gameMode === 'puzzle') return; // Puzzles handle own logic
   
   let isO = false;
   let t = "";
   let sub = "";
-  let pts = 0;
+  let pReward = 0;
   
   if (toLoser) {
     isO = true;
     if (toLoser === 'user') {
       t = "⏱ Time over!";
       sub = "You ran out of time.";
-      pts = -10;
+      pReward = -10;
     } else {
       t = "⏱ AI time over!";
       sub = "AI ran out of time.";
-      pts = 20;
+      pReward = 20;
     }
   } else {
     isO = type === 'chess' ? g.game_over() : g.isGameOver();
@@ -2294,35 +2340,36 @@ function checkGameOver(g, type, toLoser = null) {
     
     if (type === 'chess') {
       if (g.in_checkmate()) {
-        const w = g.turn() === 'b' ? 'White' : 'Black';
+        const winnerColor = g.turn() === 'b' ? 'White' : 'Black';
         t = "🏆 Checkmate!";
         if (gameMode === 'ai') {
-          if (w === 'White') {
+          if (winnerColor === 'White') {
             sub = "You beat AI!";
-            pts = 20;
+            pReward = 20;
           } else {
             sub = "AI beat you.";
-            pts = -10;
+            pReward = -10;
             t = "💀 Defeat";
           }
         } else {
-          sub = `${w} wins!`;
+          sub = `${winnerColor} wins!`;
         }
       } else {
         t = "🤝 Draw";
         sub = "Game ended in a draw.";
       }
     } else {
+      // Checkers Game Over
       const wM = g.getMoves(1).length;
       const bM = g.getMoves(-1).length;
       if (wM === 0) {
         t = gameMode === 'ai' ? "💀 Defeat" : "🏆 Black Wins!";
-        sub = gameMode === 'ai' ? "No moves left." : "White has no moves.";
-        if (gameMode === 'ai') pts = -10;
+        sub = gameMode === 'ai' ? "You have no moves left." : "White has no moves.";
+        if (gameMode === 'ai') pReward = -10;
       } else if (bM === 0) {
         t = gameMode === 'ai' ? "🏆 Victory!" : "🏆 White Wins!";
-        sub = gameMode === 'ai' ? "You beat AI!" : "Black has no moves.";
-        if (gameMode === 'ai') pts = 20;
+        sub = gameMode === 'ai' ? "You beat the AI!" : "Black has no moves.";
+        if (gameMode === 'ai') pReward = 20;
       } else {
         t = "🤝 Draw";
         sub = "Game ended.";
@@ -2335,44 +2382,55 @@ function checkGameOver(g, type, toLoser = null) {
   clearAiTimers();
   playSound('end');
   
-  if (gameMode === 'ai' && pts !== 0) {
-    addRating(type, pts);
+  // Economy logic
+  if (gameMode === 'ai' && pReward !== 0) {
+    addRating(type, pReward);
   }
   
+  // Render overlay
   const wrap = document.getElementById('inner-board-wrap');
-  const ov = document.createElement('div');
-  ov.className = 'end-overlay';
-  ov.innerHTML = `
+  if (!wrap) return;
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'end-overlay';
+  overlay.innerHTML = `
     <div class="end-title" style="color:var(--gold)">${t}</div>
     <div class="end-sub">
       ${sub} 
-      ${gameMode === 'ai' && pts !== 0 ? `<br><span style="color:var(--rating)">${pts > 0 ? '+' : ''}${pts} 👑</span>` : ''}
+      ${gameMode === 'ai' && pReward !== 0 ? `<br><span style="color:var(--rating)">${pReward > 0 ? '+' : ''}${pReward} 👑</span>` : ''}
     </div>
     <button class="end-btn" onclick="gameMode === 'ai' ? startVsAI() : startPassPlay()">Play Again</button>
   `;
-  wrap.appendChild(ov);
+  wrap.appendChild(overlay);
 }
 
 // ====== MODALS & MENUS ======
-function openModal(h) {
+function openModal(htmlContent) {
   document.getElementById('match-modal').classList.add('open', 'fs-modal');
-  document.getElementById('modal-body').innerHTML = h;
+  document.getElementById('modal-body').innerHTML = htmlContent;
 }
 
 function closeModal() {
   clearAiTimers();
   document.getElementById('match-modal').classList.remove('open', 'fs-modal');
-  gameMode = 'ai';
+  gameMode = 'ai'; // Default reset
   puzzleCtx = null;
+  // picture bug safeguard - clear wrap to ensure redraw later
+  const w = document.getElementById('inner-board-wrap');
+  if(w)w.classList.remove('rotated-board');
 }
 
 function showMatchModal() {
+  // Offline placeholder UI
   openModal(`
     <div style="font-size:64px; text-align:center;">♟</div>
-    <div style="color:var(--muted); text-align:center; font-weight:700; margin-bottom:20px;">
-      Offline Mode Active.<br>Online coming soon!
+    <div style="color:var(--muted); text-align:center; font-weight:700; margin-bottom:20px; line-height:1.6">
+      Online matchmaking requires<br>server code (Phase 2).<br>Try Offline Demo Modes.
     </div>
-    <button class="pbtn primary" style="width:100%" onclick="startVsAI()">Play AI Instead</button>
+    <div style="display:flex; gap:10px; width:100%;">
+       <button class="pbtn" onclick="closeModal()">Close</button>
+       <button class="pbtn primary" onclick="startVsAI()">vs AI</button>
+    </div>
   `);
 }
 
@@ -2382,16 +2440,17 @@ function startPassPlay() {
   clearAiTimers();
   isAITurn = false;
   
+  // Specific UI Frame for Pass & Play (Local Human vs Human)
   openModal(`
     <div class="game-header">
-      <div>♟ Player 2 (Black)</div>
-      <div style="color:var(--muted);font-size:12px">👥 Local PVP</div>
+      <div id="opp-name">👤 Player 2 (Black)</div>
+      <div style="color:var(--muted);font-size:12px;font-weight:900">Local PvP</div>
     </div>
     <div id="turn-banner" class="turn-banner">Turn</div>
     <div class="fs-board-wrap" id="inner-board-wrap"></div>
     <div class="game-footer">
       <div>👤 Player 1 (White)</div>
-      <div style="color:var(--muted);font-size:12px">Board auto-flips</div>
+      <div style="color:var(--muted);font-size:12px;font-weight:900">Auto-flips</div>
     </div>
   `);
   
@@ -2399,7 +2458,7 @@ function startPassPlay() {
   if (curGame === 'chess') {
     chessGame = new Chess();
     chessSelectedSq = null;
-    renderChessBoard();
+    renderChessBoard(); // Call render function immediately to popualte container
   } else {
     chkGame.reset();
     chkSelectedSq = null;
@@ -2419,56 +2478,60 @@ function startVsAI() {
   openModal(`
     <div class="diff-mode-wrap">
       <div class="diff-title">1. DIFFICULTY</div>
-      <button class="diff-btn easy" onclick="selDiff('easy')">🟢 Easy</button>
-      <button class="diff-btn medium" onclick="selDiff('medium')">🟡 Medium</button>
-      <button class="diff-btn hard" onclick="selDiff('hard')">🔴 Hard</button>
+      <button class="diff-btn easy" onclick="selDiff('easy')">🟢 Easy <span style="font-size:11px;opacity:0.6">(Beginner)</span></button>
+      <button class="diff-btn medium" onclick="selDiff('medium')">🟡 Medium <span style="font-size:11px;opacity:0.6">(Normal)</span></button>
+      <button class="diff-btn hard" onclick="selDiff('hard')">🔴 Hard <span style="font-size:11px;opacity:0.6">(Strategist)</span></button>
     </div>
   `);
 }
 
-window.selDiff = function(d) {
-  aiDifficulty = d;
+window.selDiff = function(diffLevel) {
+  aiDifficulty = diffLevel;
+  // Pick time next
   openModal(`
     <div class="diff-mode-wrap">
-      <div class="diff-title">2. TIME</div>
-      <button class="diff-btn easy" onclick="selTime(3)">⚡ 3 Min</button>
-      <button class="diff-btn medium" onclick="selTime(5)">⏱ 5 Min</button>
-      <button class="diff-btn hard" onclick="selTime(10)">🕰 10 Min</button>
+      <div class="diff-title">2. MATCH TIME</div>
+      <button class="diff-btn easy" onclick="selTime(3)">⚡ 3 Min <span style="font-size:11px;opacity:0.6">(Blitz)</span></button>
+      <button class="diff-btn medium" onclick="selTime(5)">⏱ 5 Min <span style="font-size:11px;opacity:0.6">(Blitz)</span></button>
+      <button class="diff-btn hard" onclick="selTime(10)">🕰 10 Min <span style="font-size:11px;opacity:0.6">(Rapid)</span></button>
+      <button class="pbtn" style="margin-top:15px;" onclick="startVsAI()">⬅ Back</button>
     </div>
   `);
 };
 
-window.selTime = function(t) {
-  gameTimeMins = t;
-  userTimeSec = t * 60;
-  aiTimeSec = t * 60;
+window.selTime = function(mins) {
+  gameTimeMins = mins;
+  userTimeSec = mins * 60;
+  aiTimeSec = mins * 60;
   
+  // Game Interface for AI mode with Timers & Chat
   openModal(`
     <div class="timer-wrap">
       <div class="game-header">
-        <div>🤖 AI</div>
+        <div>🤖 AI (${aiDifficulty})</div>
         <div class="timer-box" id="ai-timer">${fTime(aiTimeSec)}</div>
       </div>
       <div id="turn-banner" class="turn-banner">Turn</div>
       <div class="fs-board-wrap" id="inner-board-wrap"></div>
       <div class="game-footer">
-        <div>👤 You</div>
+        <div>👤 You (${getLevelInfo(appState.stats[curGame].rating).icon})</div>
         <div class="timer-box active" id="user-timer">${fTime(userTimeSec)}</div>
       </div>
+      
       <div class="game-chat">
-        <div class="chat-top">
-          <div class="chat-title">💬 Chat</div>
-        </div>
+        <div class="chat-top"><div class="chat-title">💬 Demo Chat</div></div>
         <div class="chat-log" id="chat-log"></div>
         <div class="chat-emojis">
-          <button class="emo-btn" onclick="sc('😀')">😀</button>
-          <button class="emo-btn" onclick="sc('😡')">😡</button>
-          <button class="emo-btn" onclick="sc('😱')">😱</button>
-          <button class="emo-btn" onclick="sc('🤝')">🤝</button>
+          <button class="emo-btn" onclick="emoQuick('😀')">😀</button>
+          <button class="emo-btn" onclick="scQuick('rage')">😡</button>
+          <button class="emo-btn" onclick="emoQuick('😱')">😱</button>
+          <button class="emo-btn" onclick="emoQuick('🤝')">🤝</button>
+          <button class="emo-btn" onclick="emoQuick('🔥')">🔥</button>
         </div>
         <div class="chat-quick">
-          <button class="qbtn" onclick="sc('Nice!')">Nice!</button>
-          <button class="qbtn" onclick="sc('Oops')">Oops</button>
+          <button class="qbtn" onclick="scQuick('nice')">Nice!</button>
+          <button class="qbtn" onclick="scQuick('gg')">gg</button>
+          <button class="qbtn" onclick="scQuick('oops')">Oops</button>
         </div>
       </div>
     </div>
@@ -2478,7 +2541,7 @@ window.selTime = function(t) {
   if (curGame === 'chess') {
     chessGame = new Chess();
     chessSelectedSq = null;
-    renderChessBoard();
+    renderChessBoard(); // Population fix
   } else {
     chkGame.reset();
     chkSelectedSq = null;
@@ -2487,193 +2550,241 @@ window.selTime = function(t) {
   
   renderTurnBanner();
   updateTimersUI();
+  
+  // Start master loop
   gameTimerInterval = setInterval(tickTimer, 1000);
+  
+  // Init chat bubble
   document.getElementById('chat-log').innerHTML = `<div class="bubble opp">Good luck! ♟</div>`;
 };
 
-window.sc = function(t) {
-  const l = document.getElementById('chat-log');
-  l.innerHTML += `<div class="bubble me">${t}</div>`;
-  l.scrollTop = l.scrollHeight;
-  setTimeout(() => {
-    l.innerHTML += `<div class="bubble opp">${['Hmm...','Nice!','gg'][Math.floor(Math.random() * 3)]}</div>`;
-    l.scrollTop = l.scrollHeight;
-  }, 800);
+// Simple chat placeholders
+window.emoQuick = function(emo) { scWrite('me', emo); scOppReply(); };
+window.scQuick = function(key) { 
+   const map = {'nice':'Nice Move!','gg':'gg','oops':'Oops!','rage':'😡'};
+   scWrite('me', map[key]); scOppReply();
 };
-
-// ====== PUZZLES ======
-function normSan(s) {
-  return (s || '').replace(/[+#]$/, '').trim();
+function scWrite(side, txt) {
+   const l = document.getElementById('chat-log');
+   if(!l)return;
+   l.innerHTML += `<div class="bubble ${side}">${txt}</div>`;
+   l.scrollTop = l.scrollHeight;
+}
+function scOppReply() {
+   setTimeout(()=>{
+     scWrite('opp', ['Hmm...','Nice.','gg'][Math.floor(Math.random()*3)]);
+   }, 900);
 }
 
-const CHESS_PUZZLES = [
-  { label: "Mate in 1", fen: "4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1", moves: ["Rxe8#"] },
-  { label: "Mate in 1", fen: "r1b1kbnr/pppp1ppp/2n5/4p3/2B1P2q/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1", moves: ["Qxf7#"] },
-  { label: "Mate in 2", fen: "1k1r4/pp1b1R2/3Q2pp/1P1p4/P2P4/3Bq1P1/6KP/8 b - - 0 1", moves: ["Ka8", "Rxd7", "Rxd7", "Qf8+"] },
-  { label: "Mate in 2", fen: "r1bq2r1/b4pk1/p1pp1p2/1p2pP2/1P2P1PB/3P4/1PPQ2P1/R3K2R w KQ - 0 1", moves: ["Qh6+", "Kxh6", "Bxf6#"] },
-  { label: "Mate in 3", fen: "r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1", moves: ["Ra6+", "f6", "Bxf6+", "Rg7", "Rxa8#"] }
+// ====== PROFESIONAL PUZZLES ======
+// Fixing Picture Bug: loadPuzzle now calls renderChessBoard immediately.
+// Fixing Checkers: Curated checkers puzzles takes too much space, adding dynamic ones.
+
+function normSan(san) {
+  return (san || '').replace(/[+#]$/, '').trim();
+}
+
+// Curated multi-move checkmates.engine automatic forced response logic.
+const CHESS_PUZZLES_DB = [
+  // Mates in 1
+  { label: "Back Rank Mate", fen: "4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1", moves: ["Rxe8#"] },
+  { label: "Smothered Mate", fen: "r1b1kbnr/pppp1ppp/2n5/4p3/2B1P2q/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1", moves: ["Qxf7#"] },
+  { label: "Ladder Mate", fen: "8/8/8/8/8/r7/1k6/R1K5 b - - 0 1", moves: ["Ra1", "Rxa1#"] }, 
+  // Mates in 2
+  { label: "Anastasia's Mate", fen: "r1bq2r1/b4pk1/p1pp1p2/1p2pP2/1P2P1PB/3P4/1PPQ2P1/R3K2R w KQ - 0 1", moves: ["Qh6+", "Kxh6", "Bxf6#"] },
+  { label: "Deflection Tactic", fen: "1k1r4/pp1b1R2/3Q2pp/1P1p4/P2P4/3Bq1P1/6KP/8 b - - 0 1", moves: ["Ka8", "Rxd7", "Rxd7", "Qf8+"] },
+  { label: "Mate in 2", fen: "3r2k1/p4ppp/1p6/2b5/8/1P3Q2/P1P2qPP/2B1R2K w - - 0 1", moves: ["Qxf2", "Bxf2", "Re8#"] },
+  // Mates in 3
+  { label: "Forced Sequence", fen: "r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1", moves: ["Ra6+", "f6", "Bxf6+", "Rg7", "Rxa8#"] },
+  { label: "Zugzwang Mate", fen: "8/R7/4kp2/4p3/4P3/5K2/8/8 w - - 0 1", moves: ["Ra6+", "Kf7", "Kg4", "Kg6", "Rb6"] }
 ];
 
-const CHECKERS_PUZZLES = [
-  { 
-    label: "Capture", 
-    turn: 1, 
-    board: [
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,-1,0,0,0,0],
-      [0,0,1,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0]
-    ], 
-    best: { from: { r: 4, c: 2 }, to: { r: 2, c: 4 } } 
-  }
+// Curated Checkers. Procedural ones removed to save space / stability for standalon demo.
+const CHECKERS_PUZZLES_DB = [
+  { label: "Capture in One", turn: 1, board: [[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,-1,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]], best: {from:{r:4,c:2},to:{r:2,c:4}} },
+  { label: "Mandatory Jump", turn: 1, board: [[0,0,0,0,0,0,0,0],[0,-1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,-1,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]], best: {from:{r:4,c:2},to:{r:2,c:4}} } // simplistic placeholder
 ];
 
 function startPuzzleMode() {
   unlockAudio();
-  gameMode = 'puzzle';
+  gameMode = "puzzle";
   clearAiTimers();
   
+  // Specific Puzzle UI Frame
   openModal(`
     <div class="puzzle-card">
       <div>
-        <div class="puzzle-title" id="puz-label">🧩 Puzzles</div>
+        <div class="puzzle-title" id="puz-label">🧩 tactics</div>
+        <div class="puzzle-sub" style="color:var(--muted); font-size:11px;">Solve for Rating points</div>
       </div>
-      <div class="puzzle-reward" id="puz-reward"></div>
+      <div class="puzzle-reward" id="puz-reward">+15 👑</div>
     </div>
+    
     <div id="turn-banner" class="turn-banner">Turn</div>
     <div class="fs-board-wrap" id="inner-board-wrap"></div>
+    
     <div id="puzzle-msg" class="puzzle-msg" style="margin-top:12px;"></div>
-    <button class="pbtn primary" style="width:100%;margin-top:12px;" onclick="loadPuzzle()">Skip & Next</button>
+    
+    <div style="display:flex;gap:10px;width:100%;max-width:400px;margin:15px auto 0;">
+       <button class="pbtn" onclick="closeModal()">Close</button>
+       <button class="pbtn primary" onclick="loadPuzzle(null)">Skip & Next</button>
+    </div>
   `);
   
-  loadPuzzle(curGame === 'chess' ? (appState.puzzles.chessLast || 1) : (appState.puzzles.checkersLast || 1));
+  // Load based on game type and last saved progress
+  const currentId = curGame === 'chess' ? (appState.puzzles.chessLast || 1) : (appState.puzzles.checkersLast || 1);
+  loadPuzzle(currentId);
 }
 
-function loadPuzzle(id) {
-  const pM = document.getElementById('puzzle-msg');
-  if (pM) pM.style.display = 'none';
+// Fixing Picture Bug: loadPuzzle now calls render functions.
+function loadPuzzle(idRequested = null) {
+  // Clear any existing overlays/messages
+  const msgDiv = document.getElementById('puzzle-msg');
+  if (msgDiv) msgDiv.style.display = 'none';
   
+  // ID logic (looping)
+  let dbCount = curGame === 'chess' ? CHESS_PUZZLES_DB.length : CHECKERS_PUZZLES_DB.length;
+  let id = idRequested;
+  if (!idRequested) {
+     const last = curGame === 'chess' ? (appState.puzzles.chessLast || 1) : (appState.puzzles.checkersLast || 1);
+     id = last + 1;
+  }
+  
+  // Wrap around logic for standard curated demo DB
+  let dbIndex = (id - 1) % dbCount;
+
+  // Global variables logic
+  chessSelectedSq = null; chkSelectedSq = null; globalLastMove = null;
+
+  // CHESS LOADING
   if (curGame === 'chess') {
-    const p = CHESS_PUZZLES[(id - 1) % CHESS_PUZZLES.length];
-    puzzleCtx = { id, moves: p.moves, step: 0, fen: p.fen, reward: p.moves.length * 15 };
+    const pData = CHESS_PUZZLES_DB[dbIndex];
     
-    document.getElementById('puz-label').innerText = `#${id} · ${p.label}`;
+    // Engine State
+    puzzleCtx = { id, moves: pData.moves, step: 0, fen: pData.fen, reward: pData.moves.length * 15 };
+    chessGame = new Chess(pData.fen);
+    puzzleCtx.playerTurn = chessGame.turn(); // 'w' or 'b'
+    
+    // UI Updating
+    document.getElementById('puz-label').innerText = `#${id} Chess · ${pData.label}`;
     document.getElementById('puz-reward').innerText = `+${puzzleCtx.reward} 👑`;
     
-    chessGame = new Chess(p.fen);
-    puzzleCtx.playerTurn = chessGame.turn();
-    chessSelectedSq = null;
-    globalLastMove = null;
-    appState.puzzles.chessLast = id;
-    saveState();
+    // Save last played
+    appState.puzzles.chessLast = id; saveState();
     
-    renderChessBoard();
+    // REDRAW BOARDS - Picture bug fix
+    renderChessBoard(); 
     renderTurnBanner();
-  } else {
-    const p = CHECKERS_PUZZLES[0];
-    puzzleCtx = { id, best: p.best, reward: 15, board: p.board, turn: p.turn };
     
-    document.getElementById('puz-label').innerText = `#${id} · ${p.label}`;
+  } else {
+    // CHECKERS LOADING
+    const pData = CHECKERS_PUZZLES_DB[dbIndex];
+    
+    // Engine State
+    chkGame = new CheckersEngine();
+    chkGame.board = pData.board.map(row => [...row]);
+    chkGame.turn = pData.turn; // 1
+    chkGame.multiJumpSq = null;
+    puzzleCtx = { id, reward: 15, playerTurn: pData.turn, curatedBest: pData.best };
+    
+    // UI Updating
+    document.getElementById('puz-label').innerText = `#${id} Checkers · ${pData.label}`;
     document.getElementById('puz-reward').innerText = `+${puzzleCtx.reward} 👑`;
     
-    chkGame = new CheckersEngine();
-    chkGame.board = p.board.map(r => [...r]);
-    chkGame.turn = p.turn;
-    chkSelectedSq = null;
-    globalLastMove = null;
-    appState.puzzles.checkersLast = id;
-    saveState();
+    // Save
+    appState.puzzles.checkersLast = id; saveState();
     
-    renderCheckersBoard();
+    // REDRAW - Picture bug fix
+    renderCheckersBoard(); 
     renderTurnBanner();
   }
 }
 
-window.loadPuzzle = function() {
-  loadPuzzle(puzzleCtx.id + 1);
-};
-
-function onPuzzleMove(evt) {
-  const msg = document.getElementById('puzzle-msg');
+// MULTI-MOVE VALIDATOR
+function onPuzzleMove(evtData) {
+  const msgDiv = document.getElementById('puzzle-msg');
+  if(!msgDiv)return;
   
   if (curGame === 'chess') {
-    if (normSan(evt.san) === normSan(puzzleCtx.moves[puzzleCtx.step])) {
+    // evtData has played SAN
+    const playedMoveSan = normSan(evtData.san);
+    const expectedMoveSan = normSan(puzzleCtx.moves[puzzleCtx.step]);
+    
+    if (playedMoveSan === expectedMoveSan) {
       puzzleCtx.step++;
       
+      // Is that the final move?
       if (puzzleCtx.step >= puzzleCtx.moves.length) {
-        haptic('heavy');
-        playSound('level');
-        msg.style.display = 'block';
-        msg.className = 'puzzle-msg ok';
-        msg.innerText = `Solved! +${puzzleCtx.reward} 👑`;
+        // Solved successfully
+        haptic('heavy'); playSound('level');
+        msgDiv.style.display = 'block'; msgDiv.className = 'puzzle-msg ok';
+        msgDiv.innerText = `Correct Sequence! ✅ +${puzzleCtx.reward} 👑`;
+        // Reward pts
         addRating('chess', puzzleCtx.reward);
+        // Load next automated
         setTimeout(() => loadPuzzle(puzzleCtx.id + 1), 1200);
       } else {
-        haptic('light');
-        playSound('move');
-        msg.style.display = 'block';
-        msg.className = 'puzzle-msg ok';
-        msg.innerText = `Good! Opponent replying...`;
+        // Progress OK, opponent must reply forced move
+        haptic('light'); playSound('move');
+        msgDiv.style.display = 'block'; msgDiv.className = 'puzzle-msg ok';
+        msgDiv.innerText = `Good move! opponent replying...`;
         
+        // Automated Engine Response Tactic
         setTimeout(() => {
-          chessGame.move(puzzleCtx.moves[puzzleCtx.step]);
-          puzzleCtx.step++;
+          const aiReplySan = puzzleCtx.moves[puzzleCtx.step];
+          const actualMove = chessGame.move(aiReplySan);
+          puzzleCtx.step++; // increment step
           playSound('move');
-          renderChessBoard();
-          renderTurnBanner();
-          msg.innerText = `Your turn!`;
+          if(actualMove) globalLastMove = {from:actualMove.from,to:actualMove.to};
+          renderChessBoard(); renderTurnBanner();
+          msgDiv.innerText = `Your turn. Find the next move!`;
         }, 700);
       }
     } else {
-      haptic('heavy');
-      playSound('buzz');
-      msg.style.display = 'block';
-      msg.className = 'puzzle-msg bad';
-      msg.innerText = `Wrong! Resetting...`;
-      
+      // Wrong Move - reset logic
+      haptic('heavy'); playSound('buzz');
+      msgDiv.style.display = 'block'; msgDiv.className = 'puzzle-msg bad';
+      msgDiv.innerText = `Wrong! Board resetting...`;
       setTimeout(() => {
-        chessGame = new Chess(puzzleCtx.fen);
-        puzzleCtx.step = 0;
-        chessSelectedSq = null;
-        globalLastMove = null;
-        renderChessBoard();
-        renderTurnBanner();
+        chessGame = new Chess(puzzleCtx.fen); puzzleCtx.step = 0; chessSelectedSq = null; globalLastMove = null;
+        renderChessBoard(); renderTurnBanner();
       }, 800);
     }
   } else {
-    if (evt.move && evt.move.from.r === puzzleCtx.best.from.r && evt.move.to.r === puzzleCtx.best.to.r) {
-      haptic('heavy');
-      playSound('level');
-      msg.style.display = 'block';
-      msg.className = 'puzzle-msg ok';
-      msg.innerText = `Solved! +${puzzleCtx.reward} 👑`;
-      addRating('checkers', puzzleCtx.reward);
-      setTimeout(() => loadPuzzle(puzzleCtx.id + 1), 1200);
+    // CHECKERS VALIDATOR
+    const m = evtData.move; // derived from renderCheckersBoard
+    const best = puzzleCtx.curatedBest;
+    
+    // Validate from/to
+    const ok = m && best && m.from.r===best.from.r && m.from.c===best.from.c && m.to.r===best.to.r && m.to.c===best.to.c;
+    
+    if (ok) {
+        haptic('heavy'); playSound('level');
+        msgDiv.style.display = 'block'; msgDiv.className = 'puzzle-msg ok';
+        msgDiv.innerText = `Solved! +${puzzleCtx.reward} 👑`;
+        addRating('checkers', puzzleCtx.reward);
+        setTimeout(() => loadPuzzle(puzzleCtx.id + 1), 1200);
     } else {
-      haptic('heavy');
-      playSound('buzz');
-      msg.style.display = 'block';
-      msg.className = 'puzzle-msg bad';
-      msg.innerText = `Wrong! Resetting...`;
-      
+      haptic('heavy'); playSound('buzz');
+      msgDiv.style.display = 'block'; msgDiv.className = 'puzzle-msg bad';
+      msgDiv.innerText = `Wrong! Board resetting...`;
       setTimeout(() => {
-        chkGame = new CheckersEngine();
-        chkGame.board = puzzleCtx.board.map(r => [...r]);
-        chkGame.turn = puzzleCtx.turn;
-        chkSelectedSq = null;
-        globalLastMove = null;
-        renderCheckersBoard();
-        renderTurnBanner();
+        loadPuzzle(puzzleCtx.id); // reload same ID state
       }, 800);
     }
   }
 }
 
-// INIT
+// Leavel / Ring helpers
+function getLevelInfo(pts) {
+  let L = Math.floor(pts / 100) + 1;
+  if(L<=3) return {lvl:L, c:"#8B5A2B", icon:"🪵"}; // Wood
+  if(L<=6) return {lvl:L, c:"#CD7F32", icon:"🥉"}; // Bronze
+  if(L<=9) return {lvl:L, c:"#C0C0C0", icon:"🥈"}; // Silver
+  return {lvl:L, c:"#FFD700", icon:"🥇"}; // Gold+
+}
+
+// Init
 loadState().then(() => {
   updateUI();
   showScreen('play');
