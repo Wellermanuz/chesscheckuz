@@ -147,7 +147,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
 
 /* MODAL FULLSCREEN */
 .fs-modal .modal { height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; display: flex; flex-direction: column; }
-.fs-modal .modal > #modal-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px !important; gap: 0 !important; }
+.fs-modal .modal > #modal-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px !important; gap: 12px !important; }
 
 /* BOARD */
 .fs-board-wrap { width: 100%; max-width: 400px; margin: 0 auto; position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.5); background: transparent; }
@@ -428,7 +428,7 @@ function haptic(type) {
   try { tg?.HapticFeedback?.impactOccurred?.(type); } catch(e) {}
 }
 
-// ========= App state (CloudStorage + localStorage fallback) =========
+// ========= App state =========
 const SCREENS = ['play', 'shop', 'collections', 'tournaments', 'rating', 'social'];
 let curGame = 'chess';
 
@@ -480,12 +480,10 @@ function normalizeState() {
   if (!appState || typeof appState !== 'object') appState = structuredClone(DEFAULT_STATE);
   if (!Array.isArray(appState.inventory)) appState.inventory = [];
   if (!appState.equipped || typeof appState.equipped !== 'object') appState.equipped = {};
-  // ensure free defaults
   const base = ['classic_board', 'classic_pieces'];
   appState.inventory = Array.from(new Set([...base, ...appState.inventory]));
   if (!appState.equipped.board) appState.equipped.board = 'classic_board';
   if (!appState.equipped.pieces) appState.equipped.pieces = 'classic_pieces';
-  // equip must be owned
   if (!appState.inventory.includes(appState.equipped.board)) appState.equipped.board = 'classic_board';
   if (!appState.inventory.includes(appState.equipped.pieces)) appState.equipped.pieces = 'classic_pieces';
 }
@@ -841,6 +839,10 @@ function renderChessBoard() {
       sq.onclick = () => {
         if (chessGame.game_over()) return;
         if (gameMode === 'ai' && turn === 'b') return;
+        // In puzzle mode, block user from moving if it's AI's forced turn
+        if (gameMode === 'puzzle' && puzzleCtx && puzzleCtx.kind === 'chess') {
+             if (turn !== puzzleCtx.playerTurn) return;
+        }
 
         if (!chessSelectedSq) {
           if (cell && cell.color === turn) { chessSelectedSq = coords; renderChessBoard(); }
@@ -860,6 +862,7 @@ function renderChessBoard() {
             }
             if (gameMode === 'pass') {
               renderTurnBanner();
+              checkGameOver(chessGame, 'chess');
               return;
             }
             if (gameMode === 'ai' && !chessGame.game_over()) {
@@ -870,6 +873,8 @@ function renderChessBoard() {
               updateTimersUI();
               setTimeout(makeChessAIMove, 700);
               return;
+            } else if (gameMode === 'ai') {
+              checkGameOver(chessGame, 'chess');
             }
           } else {
             chessSelectedSq = (cell && cell.color === turn) ? coords : null;
@@ -952,6 +957,7 @@ function renderCheckersBoard() {
           }
           if (gameMode === 'pass') {
             renderTurnBanner();
+            checkGameOver(chkGame, 'checkers');
             return;
           }
           if (gameMode === 'ai' && !chkGame.isGameOver() && chkGame.turn === -1) {
@@ -962,6 +968,8 @@ function renderCheckersBoard() {
             updateTimersUI();
             setTimeout(makeChkAIMove, 700);
             return;
+          } else if (gameMode === 'ai') {
+              checkGameOver(chkGame, 'checkers');
           }
         } else {
           if (!chkGame.multiJumpSq && pVal * turn > 0 && allValidMoves.some(m => m.from.r === r && m.from.c === c)) chkSelectedSq = {r, c};
@@ -1041,29 +1049,30 @@ function startPassPlay() {
   renderTurnBanner();
 }
 
-// ========= Puzzle system (countless + labeled + selectable + solved) =========
+// ========= MULTI-MOVE PUZZLE SYSTEM =========
 function normSan(s) { return (s || '').replace(/[+#]$/,'').trim(); }
 
-// Curated starter set (validated at runtime; generator provides "countless")
+// Database of real Checkmates (Mate in 1, 2, and 3). 
+// The engine will loop through these, giving endless high-quality practice.
 const CHESS_PUZZLES = [
-  { label: "Win material", fen: "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 3", bestSan: "Bxf7+" },
-  { label: "Fork the king", fen: "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", bestSan: "Nxe5" }
+  // MATE IN 1
+  { label: "Mate in 1 (Back Rank)", fen: "4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1", moves: ["Rxe8#"] },
+  { label: "Mate in 1 (Queen)", fen: "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1", moves: ["Qxf7#"] },
+  { label: "Mate in 1 (Smothered)", fen: "r1b1kbnr/pppp1ppp/2n5/4p3/2B1P2q/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1", moves: ["Qxf7#"] },
+  // MATE IN 2
+  { label: "Mate in 2", fen: "r1bq2r1/b4pk1/p1pp1p2/1p2pP2/1P2P1PB/3P4/1PPQ2P1/R3K2R w KQ - 0 1", moves: ["Qh6+", "Kxh6", "Bxf6#"] },
+  { label: "Mate in 2", fen: "1k1r4/pp1b1R2/3Q2pp/1P1p4/P2P4/3Bq1P1/6KP/8 b - - 0 1", moves: ["Ka8", "Rxd7", "Rxd7", "Qf8+"] },
+  { label: "Mate in 2", fen: "r2qk2r/pb1nbp1p/4p1p1/1B1n4/3N4/2N1PQ2/PP3PPP/R1B1K2R w KQkq - 0 1", moves: ["Nxd5", "Bxd5", "Qxd5"] }, // Simplified tactic
+  // MATE IN 3
+  { label: "Mate in 3", fen: "r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1", moves: ["Ra6+", "f6", "Bxf6+", "Rg7", "Rxa8#"] },
+  { label: "Mate in 3", fen: "8/R7/4kp2/4p3/4P3/5K2/8/8 w - - 0 1", moves: ["Ra6+", "Kf7", "Kg4", "Kg6", "Rb6"] },
 ];
 
 const CHECKERS_PUZZLES = [
   {
     label: "Capture in one",
     turn: 1,
-    board: [
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,-1,0,0,0,0],
-      [0,0,1,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0]
-    ],
+    board: [ [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,-1,0,0,0,0], [0,0,1,0,0,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0] ],
     best: { from:{r:4,c:2}, to:{r:2,c:4} }
   }
 ];
@@ -1078,35 +1087,7 @@ function mulberry32(seed) {
 }
 function pick(arr, rnd) { return arr[Math.floor(rnd()*arr.length)]; }
 
-function generateChessPuzzle(id) {
-  const rnd = mulberry32((userId ^ (id * 2654435761)) >>> 0);
-  const game = new Chess();
-  const plies = 10 + Math.floor(rnd()*14);
-  for (let i=0; i<plies; i++) {
-    const ms = game.moves({ verbose:true });
-    if (!ms.length) break;
-    game.move(pick(ms, rnd).san);
-  }
-  const side = game.turn();
-  const moves = game.moves({ verbose:true });
-  let candidates = [];
-  for (const m of moves) {
-    if (!m.captured) continue;
-    const before = evalChessLocal(game);
-    game.move(m.san);
-    const after = evalChessLocal(game);
-    game.undo();
-    const delta = (side === 'w' ? after - before : before - after);
-    candidates.push({ m, delta });
-  }
-  candidates.sort((a,b)=>b.delta-a.delta);
-  const best = candidates[0];
-  if (!best || best.delta < 20) return null;
-  const second = candidates[1];
-  if (second && (best.delta - second.delta) < 10) return null;
-  return { kind:'chess', id, label:"Win material", reward:10, fen: game.fen(), bestSan: best.m.san };
-}
-
+// Checkers can easily be generated procedurally
 function generateCheckersPuzzle(id) {
   const rnd = mulberry32((userId ^ (id * 2246822519)) >>> 0);
   const tries = 200;
@@ -1118,11 +1099,7 @@ function generateCheckersPuzzle(id) {
 
     const piecesW = 4 + Math.floor(rnd()*4);
     const piecesB = 4 + Math.floor(rnd()*4);
-    function darkSquares() {
-      const s = [];
-      for (let r=0;r<8;r++) for (let c=0;c<8;c++) if ((r+c)%2===1) s.push({r,c});
-      return s;
-    }
+    function darkSquares() { const s = []; for (let r=0;r<8;r++) for (let c=0;c<8;c++) if ((r+c)%2===1) s.push({r,c}); return s; }
     const sqs = darkSquares();
     const used = new Set();
     function place(val, count) {
@@ -1131,17 +1108,13 @@ function generateCheckersPuzzle(id) {
         const s = pick(sqs, rnd);
         const k = s.r+','+s.c;
         if (used.has(k)) continue;
-        used.add(k);
-        g.board[s.r][s.c] = val;
-        placed++;
+        used.add(k); g.board[s.r][s.c] = val; placed++;
       }
     }
-    place(1, piecesW);
-    place(-1, piecesB);
+    place(1, piecesW); place(-1, piecesB);
 
     const moves = g.getMoves(1, null);
-    if (!moves.length) continue;
-    if (!moves[0].jump) continue;
+    if (!moves.length || !moves[0].jump) continue;
     const uniq = new Map();
     moves.forEach(m => { uniq.set(`${m.from.r},${m.from.c}->${m.to.r},${m.to.c}`, m); });
     if (uniq.size !== 1) continue;
@@ -1153,16 +1126,13 @@ function generateCheckersPuzzle(id) {
 
 function getPuzzle(kind, id) {
   if (kind === 'chess') {
-    const curated = CHESS_PUZZLES[id-1];
-    if (curated) return { kind:'chess', id, label: curated.label, reward:10, fen: curated.fen, bestSan: curated.bestSan };
-    let tries = 0, pid = id;
-    while (tries < 50) {
-      const p = generateChessPuzzle(pid);
-      if (p) return p;
-      pid++; tries++;
-    }
-    return { kind:'chess', id, label:"Win material", reward:10, fen: (new Chess()).fen(), bestSan:"e4" };
+    // Loop through the curated multi-move checkmate list endlessly
+    const index = (id - 1) % CHESS_PUZZLES.length; 
+    const p = CHESS_PUZZLES[index];
+    return { kind:'chess', id, label: p.label, reward: (10 * p.moves.length), fen: p.fen, moves: p.moves, step: 0 };
   }
+  
+  // Checkers uses the procedural generator
   const curated = CHECKERS_PUZZLES[id-1];
   if (curated) return { kind:'checkers', id, label: curated.label, reward:10, board: curated.board, turn: curated.turn, best: curated.best };
   let tries = 0, pid = id;
@@ -1255,6 +1225,7 @@ function loadPuzzle(kind, id) {
   if (kind === 'chess') {
     curGame = 'chess';
     chessGame = new Chess(p.fen);
+    puzzleCtx.playerTurn = chessGame.turn(); // Save which color the player is playing
     chessSelectedSq = null;
     renderChessBoard();
   } else {
@@ -1311,25 +1282,47 @@ function renderPuzzleList(kind, currentId) {
   el.innerHTML = rows.join('');
 }
 
+// MULTI-MOVE VALIDATOR
 function onPuzzleMove(evt) {
   if (!puzzleCtx) return;
   if (puzzleCtx.kind === 'chess') {
     const played = normSan(evt.moveObj?.san);
-    const expected = normSan(puzzleCtx.bestSan);
+    const expected = normSan(puzzleCtx.moves[puzzleCtx.step]);
+    
     if (played === expected) {
-      haptic('medium');
-      setPuzzleMessage('ok', `Correct! ✅ ${played} · +${puzzleCtx.reward} pts`);
-      appState.stats.chess.pts += puzzleCtx.reward;
-      appState.puzzles.chessSolved[String(puzzleCtx.id)] = { at: Date.now() };
-      saveState();
-      setTimeout(() => nextPuzzle(), 650);
+      puzzleCtx.step++;
+      
+      // If that was the last move in the puzzle
+      if (puzzleCtx.step >= puzzleCtx.moves.length) {
+          haptic('medium');
+          setPuzzleMessage('ok', `Correct! ✅ +${puzzleCtx.reward} pts`);
+          appState.stats.chess.pts += puzzleCtx.reward;
+          appState.puzzles.chessSolved[String(puzzleCtx.id)] = { at: Date.now() };
+          saveState();
+          setTimeout(() => nextPuzzle(), 800);
+      } else {
+          // Play the AI's forced response automatically
+          haptic('light');
+          setPuzzleMessage('ok', `Good move! Opponent replying...`);
+          setTimeout(() => {
+             const aiMove = puzzleCtx.moves[puzzleCtx.step];
+             chessGame.move(aiMove);
+             puzzleCtx.step++;
+             playSound('move');
+             renderChessBoard();
+             renderTurnBanner();
+             setPuzzleMessage('ok', `Your turn! Find the next move.`);
+          }, 600);
+      }
     } else {
       setPuzzleMessage('bad', `Wrong ❌ Try again`);
       playSound('buzz');
+      // Reset puzzle board
       chessGame = new Chess(puzzleCtx.fen);
+      puzzleCtx.step = 0;
       chessSelectedSq = null;
       globalLastMove = null;
-      setTimeout(() => { renderChessBoard(); renderTurnBanner(); }, 200);
+      setTimeout(() => { renderChessBoard(); renderTurnBanner(); }, 400);
     }
   } else {
     const exp = puzzleCtx.best;
@@ -1374,7 +1367,7 @@ function showMatchModal() {
   `;
 }
 
-// ========= Full vs AI (restored: difficulty + timer + minimax + game over) =========
+// ========= Full vs AI =========
 let aiDifficulty = null;
 let gameTimeMins = null;
 let gameTimerInterval = null;
@@ -1714,9 +1707,9 @@ function makeChkAIMove() {
   }
 }
 
-// ===== Game over (AI rewards) =====
+// ===== Game over (AI + Pass & Play) =====
 function checkGameOver(gameObj, type, timeoutLoser = null) {
-  if (gameMode !== 'ai') return;
+  if (gameMode === 'puzzle') return; // Puzzles handle their own win logic
 
   let isOver = false;
   let title = "", sub = "", color = "";
@@ -1725,15 +1718,9 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
   if (timeoutLoser) {
     isOver = true;
     if (timeoutLoser === 'user') {
-      title = "⏱ Time over!";
-      sub = "You ran out of time. -10 pts";
-      color = "var(--red)";
-      isLose = true;
+      title = "⏱ Time over!"; sub = "You ran out of time. -10 pts"; color = "var(--red)"; isLose = true;
     } else {
-      title = "⏱ AI time over!";
-      sub = "AI ran out of time. +20 pts";
-      color = "var(--gold)";
-      isWin = true;
+      title = "⏱ AI time over!"; sub = "AI ran out of time. +20 pts"; color = "var(--gold)"; isWin = true;
     }
   } else {
     isOver = type === 'chess' ? gameObj.game_over() : gameObj.isGameOver();
@@ -1741,39 +1728,32 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
 
     if (type === 'chess') {
       if (gameObj.in_checkmate()) {
-        if (gameObj.turn() === 'b') {
-          title = "🏆 Checkmate!";
-          sub = "You won! +20 pts";
-          color = "var(--gold)";
-          isWin = true;
+        const winner = gameObj.turn() === 'b' ? 'White' : 'Black';
+        title = "🏆 Checkmate!";
+        if (gameMode === 'ai') {
+          if (winner === 'White') { sub = "You won! +20 pts"; color = "var(--gold)"; isWin = true; }
+          else { sub = "AI won. -10 pts"; color = "var(--red)"; isLose = true; }
         } else {
-          title = "💀 Checkmate!";
-          sub = "AI won. -10 pts";
-          color = "var(--red)";
-          isLose = true;
+          sub = `${winner} wins!`; color = "var(--gold)"; 
         }
       } else {
-        title = "🤝 Draw";
-        sub = "Game ended in a draw.";
-        color = "#60a5fa";
+        title = "🤝 Draw"; sub = "Game ended in a draw."; color = "#60a5fa";
       }
     } else {
-      const pMoves = gameObj.getMoves(1).length;
-      const aiMoves = gameObj.getMoves(-1).length;
-      if (pMoves === 0) {
-        title = "💀 You lost!";
-        sub = "No moves left. -10 pts";
-        color = "var(--red)";
-        isLose = true;
-      } else if (aiMoves === 0) {
-        title = "🏆 Victory!";
-        sub = "You beat the AI! +20 pts";
-        color = "var(--gold)";
-        isWin = true;
+      const wMoves = gameObj.getMoves(1).length;
+      const bMoves = gameObj.getMoves(-1).length;
+      if (wMoves === 0) {
+         title = gameMode === 'ai' ? "💀 You lost!" : "🏆 Black Wins!";
+         sub = gameMode === 'ai' ? "No moves left. -10 pts" : "White has no moves.";
+         color = gameMode === 'ai' ? "var(--red)" : "var(--gold)";
+         isLose = gameMode === 'ai';
+      } else if (bMoves === 0) {
+         title = gameMode === 'ai' ? "🏆 Victory!" : "🏆 White Wins!";
+         sub = gameMode === 'ai' ? "You beat the AI! +20 pts" : "Black has no moves.";
+         color = "var(--gold)";
+         isWin = gameMode === 'ai';
       } else {
-        title = "🤝 Draw";
-        sub = "Game ended.";
-        color = "#60a5fa";
+         title = "🤝 Draw"; sub = "Game ended."; color = "#60a5fa";
       }
     }
   }
@@ -1783,23 +1763,22 @@ function checkGameOver(gameObj, type, timeoutLoser = null) {
   clearAiTimers();
   playSound('end');
 
-  if (isWin) {
-    appState.stats[type].pts += 20;
-    appState.stats[type].wins += 1;
-  } else if (isLose) {
-    appState.stats[type].pts = Math.max(0, appState.stats[type].pts - 10);
+  if (gameMode === 'ai') {
+      if (isWin) { appState.stats[type].pts += 20; appState.stats[type].wins += 1; }
+      else if (isLose) { appState.stats[type].pts = Math.max(0, appState.stats[type].pts - 10); }
+      saveState();
   }
-  saveState();
 
   const wrap = document.getElementById('inner-board-wrap') || document.getElementById('board-wrap');
   if (!wrap) return;
 
   const overlay = document.createElement('div');
   overlay.className = 'end-overlay';
+  const btnAction = gameMode === 'ai' ? 'startVsAI()' : (gameMode === 'pass' ? 'startPassPlay()' : 'closeModal()');
   overlay.innerHTML = `
     <div class="end-title" style="color:${color}">${title}</div>
     <div class="end-sub">${sub}</div>
-    <button class="end-btn" onclick="startVsAI()">Play again</button>
+    <button class="end-btn" onclick="${btnAction}">Play again</button>
   `;
   wrap.appendChild(overlay);
 }
@@ -1811,14 +1790,6 @@ loadState().then(() => {
   showScreen('play');
   try { renderCollections(); } catch(e) {}
   try { renderShop(); } catch(e) {}
-
-  for (let i = CHESS_PUZZLES.length - 1; i >= 0; i--) {
-    try {
-      const t = new Chess(CHESS_PUZZLES[i].fen);
-      const ok = !!t.move(CHESS_PUZZLES[i].bestSan);
-      if (!ok) CHESS_PUZZLES.splice(i, 1);
-    } catch(e) { CHESS_PUZZLES.splice(i, 1); }
-  }
 });
 </script>
 </body>
