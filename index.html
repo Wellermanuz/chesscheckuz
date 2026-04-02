@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Chess & Checkers 3D</title>
+<title>Chess & Checkers Online</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-
 <style>
 /* =========================================
    VARIABLES & RESET
@@ -54,7 +53,9 @@ body {
   position: relative;
 }
 
-::-webkit-scrollbar { display: none; }
+::-webkit-scrollbar {
+  display: none;
+}
 
 body::before {
   content: '';
@@ -155,7 +156,9 @@ body::before {
   display: block;
 }
 
-.pinfo { flex: 1; }
+.pinfo {
+  flex: 1;
+}
 
 .pname {
   font-size: 16px;
@@ -183,9 +186,20 @@ body::before {
   gap: 4px;
 }
 
-.spill.rating { border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.1); }
-.spill.coins { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.1); }
-.spill.tickets { border-color: rgba(16,185,129,.3); background: rgba(16,185,129,.1); }
+.spill.rating {
+  border-color: rgba(245,158,11,.3);
+  background: rgba(245,158,11,.1);
+}
+
+.spill.coins {
+  border-color: rgba(239,68,68,.3);
+  background: rgba(239,68,68,.1);
+}
+
+.spill.tickets {
+  border-color: rgba(16,185,129,.3);
+  background: rgba(16,185,129,.1);
+}
 
 /* =========================================
    GAME SELECTOR TABS
@@ -242,7 +256,9 @@ body::before {
   transition: transform .1s;
 }
 
-.play-btn:active { transform: scale(.97); }
+.play-btn:active {
+  transform: scale(.97);
+}
 
 .slabel {
   padding: 4px 16px 8px;
@@ -285,7 +301,9 @@ body::before {
   transition: opacity .18s;
 }
 
-.mcard:hover::before { opacity: 1; }
+.mcard:hover::before {
+  opacity: 1;
+}
 
 .mcard.quick::before { background: linear-gradient(135deg, rgba(37,99,235,.15), transparent); }
 .mcard.ranked::before { background: linear-gradient(135deg, rgba(245,158,11,.15), transparent); }
@@ -293,9 +311,20 @@ body::before {
 .mcard.ai::before { background: linear-gradient(135deg, rgba(34,197,94,.15), transparent); }
 .mcard.local::before { background: linear-gradient(135deg, rgba(96,165,250,.15), transparent); }
 
-.micon { font-size: 32px; }
-.mname { font-size: 15px; font-weight: 700; }
-.mdesc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.micon {
+  font-size: 32px;
+}
+
+.mname {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mdesc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
 
 .mbadge {
   position: absolute;
@@ -468,14 +497,48 @@ body::before {
   background: linear-gradient(135deg, rgba(245,158,11,0.1), var(--s2));
 }
 
-.l-card.unlocked { opacity: 1; }
+.l-card.unlocked {
+  opacity: 1;
+}
 
-.l-left { display: flex; align-items: center; gap: 12px; }
-.l-icon { font-size: 32px; }
-.l-name { font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700; }
-.l-req { font-size: 11px; color: var(--muted); margin-top: 2px; font-weight: 600; }
-.l-rewards { display: flex; gap: 8px; align-items: center; }
-.l-rew { background: var(--s1); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 900; }
+.l-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.l-icon {
+  font-size: 32px;
+}
+
+.l-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.l-req {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+.l-rewards {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.l-rew {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .l-rew.c { color: var(--coin); }
 .l-rew.t { color: var(--ticket); }
 
@@ -511,8 +574,13 @@ body::before {
   transition: color .15s;
 }
 
-.nvi.active { color: var(--green); }
-.nvi .ni { font-size: 21px; }
+.nvi.active {
+  color: var(--green);
+}
+
+.nvi .ni {
+  font-size: 21px;
+}
 
 /* =========================================
    MODAL FULLSCREEN
@@ -525,7 +593,9 @@ body::before {
   z-index: 300;
 }
 
-.moverlay.open { display: flex; }
+.moverlay.open {
+  display: flex;
+}
 
 .fs-modal .modal {
   width: 100%;
@@ -552,14 +622,29 @@ body::before {
   border-bottom: 1px solid var(--border);
 }
 
-.mtitle { font-family: 'Orbitron', sans-serif; font-size: 15px; font-weight: 700; color: var(--text); }
-.mx { width: 32px; height: 32px; border-radius: 50%; background: var(--red); border: none; color: #fff; font-size: 14px; cursor: pointer; }
+.mtitle {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mx {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--red);
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
 
 .fs-modal .modal > #modal-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   padding: 16px;
   gap: 12px;
@@ -567,29 +652,22 @@ body::before {
 }
 
 /* =========================================
-   NATIVE CSS 3D BOARD ENGINE (BULLETPROOF)
+   CLEAN 2D BOARD LOGIC
    ========================================= */
-.board-3d-wrapper {
-  perspective: 1200px;
-  width: 100%;
-  max-width: 400px;
-  margin: 15px auto;
-  display: flex;
-  justify-content: center;
-}
-
 .fs-board-wrap {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  max-width: 400px;
+  margin: 0 auto;
   position: relative;
-  border-radius: 8px;
-  background: #000;
-  box-shadow: 0 30px 40px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.1) inset;
-  border: 4px solid var(--s1);
-  /* The Magic 3D Tilt */
-  transform: rotateX(40deg) scale(0.9);
-  transform-style: preserve-3d;
-  transition: transform 0.5s ease;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+}
+
+.fs-board-wrap::before {
+  content: "";
+  display: block;
+  padding-bottom: 100%;
 }
 
 .fs-board {
@@ -612,50 +690,21 @@ body::before {
   cursor: pointer;
   position: relative;
   user-select: none;
-  transform-style: preserve-3d;
 }
 
-@media (min-width: 430px) { .fs-sq { font-size: 38px; } }
+@media (min-width: 430px) {
+  .fs-sq { font-size: 38px; }
+}
 
-/* Making the Pieces stand up in 3D Space */
 .fs-sq > span {
   display: inline-block;
-  /* Counter-rotate the piece so it faces the camera perfectly */
-  transform: rotateX(-40deg) translateY(-15%);
-  transform-origin: bottom center;
-  /* 3D Drop shadow makes it look physical */
-  filter: drop-shadow(0 15px 10px rgba(0,0,0,0.6));
-  transition: transform 0.4s ease;
-  z-index: 10;
+  z-index: 3;
 }
 
-/* Checkers Pieces in 3D */
-.chk-piece {
-  width: 75%; 
-  height: 75%; 
-  border-radius: 50%;
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  font-size: 24px;
-  transform-origin: center;
-  /* Lay them flat, but pop them up slightly */
-  transform: translateZ(5px);
-  box-shadow: 0 8px 15px rgba(0,0,0,0.8), inset 0 2px 5px rgba(255,255,255,0.3);
-  transition: transform 0.4s ease;
-  z-index: 10;
-}
-
-/* TABLETOP MODE MAGIC for Pass & Play */
-/* The board stays perfectly still, but Black pieces are rotated 180° to face Player 2! */
-.fs-board-wrap.tabletop-mode .black-piece {
-  /* Keep the counter-tilt, but spin it around to face the top of the phone */
-  transform: rotateX(-40deg) rotateZ(180deg) translateY(-15%);
-}
-
-/* Tabletop Checkers */
-.fs-board-wrap.tabletop-mode .chk-piece.black-piece {
-  transform: translateZ(5px) rotateZ(180deg);
+/* TABLETOP PIECE ROTATION */
+/* Pure 2D 180-degree rotation for Black pieces in Pass & Play */
+.rotated-piece {
+  transform: rotate(180deg);
 }
 
 .last-move::before {
@@ -675,7 +724,6 @@ body::before {
   border-radius: 50%;
   z-index: 2;
   pointer-events: none;
-  transform: translateZ(2px);
 }
 
 .move-cap {
@@ -686,7 +734,17 @@ body::before {
   border-radius: 50%;
   z-index: 2;
   pointer-events: none;
-  transform: translateZ(2px);
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); }
+  70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.mandatory-piece {
+  animation: pulse-red 1.5s infinite;
+  border-color: #ef4444 !important;
 }
 
 /* =========================================
@@ -698,8 +756,6 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: auto;
-  margin-bottom: auto;
 }
 
 .game-header, .game-footer {
@@ -731,7 +787,7 @@ body::before {
 }
 
 .timer-box.active {
-  background: rgba(34,197,94,0.2);
+  background: rgba(34, 197, 94, 0.2);
   color: var(--green);
   border: 1px solid var(--green);
 }
@@ -752,81 +808,417 @@ body::before {
   transition: all 0.3s;
 }
 
-.turn-banner.white { box-shadow: 0 0 0 1px rgba(248,250,252,.2) inset; }
-.turn-banner.black { box-shadow: 0 0 0 1px rgba(239,68,68,.3) inset; }
+.turn-banner.white {
+  box-shadow: 0 0 0 1px rgba(248,250,252,.2) inset;
+}
+
+.turn-banner.black {
+  box-shadow: 0 0 0 1px rgba(239,68,68,.3) inset;
+}
 
 /* =========================================
    IN-GAME CHAT
    ========================================= */
-.game-chat { width: 100%; max-width: 400px; border: 1px solid var(--border); background: rgba(19,31,53,.65); border-radius: 14px; overflow: hidden; box-shadow: 0 6px 22px rgba(0,0,0,.25); }
-.chat-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: rgba(14,22,40,.85); border-bottom: 1px solid rgba(26,48,80,.9); }
-.chat-title { font-family: 'Orbitron', sans-serif; font-size: 12px; letter-spacing: 1px; color: var(--text); opacity: .9; }
-.chat-log { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; max-height: 120px; overflow: auto; }
-.bubble { max-width: 85%; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(26,48,80,.9); background: rgba(19,31,53,.6); font-weight: 700; font-size: 13px; line-height: 1.3; }
-.bubble.me { align-self: flex-end; border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.08); }
-.bubble.opp { align-self: flex-start; border-color: rgba(37,99,235,.35); background: rgba(37,99,235,.08); }
-.chat-emojis { display: flex; gap: 10px; padding: 10px 12px; border-top: 1px solid rgba(26,48,80,.9); background: rgba(14,22,40,.7); overflow-x: auto; }
-.emo-btn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(26,48,80,.9); background: rgba(19,31,53,.75); color: var(--text); font-size: 18px; cursor: pointer; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
-.chat-quick { display: flex; gap: 10px; padding: 10px 12px; border-top: 1px solid rgba(26,48,80,.9); background: rgba(14,22,40,.85); }
-.qbtn { flex: 1; padding: 10px 10px; border-radius: 12px; border: 1px solid rgba(26,48,80,.9); background: rgba(19,31,53,.75); color: var(--text); font-weight: 900; cursor: pointer; }
-.qbtn:active, .emo-btn:active { transform: scale(.98); }
+.game-chat {
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--border);
+  background: rgba(19,31,53,.65);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 22px rgba(0,0,0,.25);
+}
+
+.chat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(14,22,40,.85);
+  border-bottom: 1px solid rgba(26,48,80,.9);
+}
+
+.chat-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--text);
+  opacity: .9;
+}
+
+.chat-log {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(26,48,80,.9);
+  background: rgba(19,31,53,.6);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.bubble.me {
+  align-self: flex-end;
+  border-color: rgba(34,197,94,.35);
+  background: rgba(34,197,94,.08);
+}
+
+.bubble.opp {
+  align-self: flex-start;
+  border-color: rgba(37,99,235,.35);
+  background: rgba(37,99,235,.08);
+}
+
+.chat-emojis {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(26,48,80,.9);
+  background: rgba(14,22,40,.7);
+  overflow-x: auto;
+}
+
+.emo-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(26,48,80,.9);
+  background: rgba(19,31,53,.75);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-quick {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(26,48,80,.9);
+  background: rgba(14,22,40,.85);
+}
+
+.qbtn {
+  flex: 1;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(26,48,80,.9);
+  background: rgba(19,31,53,.75);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.qbtn:active, .emo-btn:active {
+  transform: scale(.98);
+}
 
 /* =========================================
    DIFFICULTY SELECTOR
    ========================================= */
-.diff-mode-wrap { width: 100%; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.diff-title { font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--gold); margin-bottom: 24px; font-weight: 900; text-align: center; letter-spacing: 1px; }
-.diff-btn { background: var(--s2); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; width: 100%; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.diff-btn:active { transform: scale(0.97); }
+.diff-mode-wrap {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.diff-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  color: var(--gold);
+  margin-bottom: 24px;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.diff-btn {
+  background: var(--s2);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  width: 100%;
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.diff-btn:active {
+  transform: scale(0.97);
+}
+
 .diff-btn.easy { border-color: rgba(34, 197, 94, 0.5); }
 .diff-btn.medium { border-color: rgba(245, 158, 11, 0.5); }
 .diff-btn.hard { border-color: rgba(239, 68, 68, 0.5); }
-.start-game-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 16px; border-radius: 12px; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); text-transform: uppercase; width: 100%; transition: transform 0.2s; margin-top: 8px; }
+
+.start-game-btn {
+  background: linear-gradient(135deg, var(--green2), #15803d);
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3);
+  text-transform: uppercase;
+  width: 100%;
+  transition: transform 0.2s;
+  margin-top: 8px;
+}
 
 /* =========================================
    END OVERLAY & POPUPS
    ========================================= */
-.end-overlay { position: absolute; inset: 0; background: rgba(8, 13, 24, 0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-family: 'Orbitron', sans-serif; text-align: center; padding: 20px; animation: fadeIn 0.3s ease; border-radius: 8px; transform: translateZ(10px); }
-.end-title { font-size: 28px; margin-bottom: 8px; font-weight: 900; line-height: 1.2; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-.end-sub { font-size: 14px; color: var(--text); margin-bottom: 24px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
-.end-btn { background: linear-gradient(135deg, var(--green2), #15803d); border: none; padding: 12px 28px; border-radius: 12px; color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3); }
+.end-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 13, 24, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  font-family: 'Orbitron', sans-serif;
+  text-align: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.end-title {
+  font-size: 28px;
+  margin-bottom: 8px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.end-sub {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 24px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+}
+
+.end-btn {
+  background: linear-gradient(135deg, var(--green2), #15803d);
+  border: none;
+  padding: 12px 28px;
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(22, 197, 94, 0.3);
+}
 
 /* =========================================
    PUZZLES
    ========================================= */
-.puzzle-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; margin-top: auto; margin-bottom: auto; }
-.puzzle-card { width: 100%; background: linear-gradient(135deg, var(--s2), rgba(19, 31, 53, .5)); border: 1px solid var(--border); border-radius: 14px; padding: 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.puzzle-title { font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 900; }
-.puzzle-reward { font-size: 12px; font-weight: 900; color: var(--rating); background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .25); padding: 5px 10px; border-radius: 10px; }
-.puzzle-msg { width: 100%; border-radius: 12px; padding: 10px; border: 1px solid var(--border); background: rgba(19, 31, 53, .6); display: none; font-weight: 700; text-align: center; margin-top: 12px; z-index: 100;}
-.puzzle-msg.ok { border-color: rgba(34, 197, 94, .35); color: var(--green); background: rgba(34, 197, 94, .08); }
-.puzzle-msg.bad { border-color: rgba(239, 68, 68, .35); color: var(--red); background: rgba(239, 68, 68, .07); }
-.pbtn { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--s2); color: var(--text); font-family: 'Rajdhani', sans-serif; font-weight: 900; font-size: 14px; cursor: pointer; }
-.pbtn.primary { background: linear-gradient(135deg, var(--green2), #15803d); border: none; color: #fff; }
+.puzzle-wrap {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes popScale { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+.puzzle-card {
+  width: 100%;
+  background: linear-gradient(135deg, var(--s2), rgba(19,31,53,.5));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.puzzle-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.puzzle-reward {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--rating);
+  background: rgba(245,158,11,.12);
+  border: 1px solid rgba(245,158,11,.25);
+  padding: 5px 10px;
+  border-radius: 10px;
+}
+
+.puzzle-msg {
+  width: 100%;
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  background: rgba(19,31,53,.6);
+  display: none;
+  font-weight: 700;
+  text-align: center;
+}
+
+.puzzle-msg.ok {
+  border-color: rgba(34,197,94,.35);
+  color: var(--green);
+  background: rgba(34,197,94,.08);
+}
+
+.puzzle-msg.bad {
+  border-color: rgba(239,68,68,.35);
+  color: var(--red);
+  background: rgba(239,68,68,.07);
+}
+
+.pbtn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--s2);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pbtn.primary {
+  background: linear-gradient(135deg, var(--green2), #15803d);
+  border: none;
+  color: #fff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popScale {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
 
 /* =========================================
    LEVEL UP MODAL
    ========================================= */
-.level-up-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); z-index: 999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-.level-up-modal.active { display: flex; animation: fadeIn 0.3s ease; }
-.lu-icon { font-size: 100px; line-height: 1; margin-bottom: 20px; animation: popScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); filter: drop-shadow(0 0 30px rgba(245, 158, 11, 0.6)); }
-.lu-title { font-family: 'Orbitron', sans-serif; font-size: 28px; color: var(--gold); font-weight: 900; margin-bottom: 10px; }
-.lu-sub { font-size: 16px; color: var(--text); margin-bottom: 30px; font-weight: 600; }
-.lu-rewards { display: flex; gap: 16px; margin-bottom: 40px; }
-.lu-rew-box { background: var(--s2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 24px; font-size: 24px; font-weight: 900; }
-.lu-rew-box.c { color: var(--coin); border-color: rgba(239, 68, 68, .3); box-shadow: 0 0 20px rgba(239, 68, 68, .15); }
-.lu-rew-box.t { color: var(--ticket); border-color: rgba(16, 185, 129, .3); box-shadow: 0 0 20px rgba(16, 185, 129, .15); }
-.lu-btn { background: linear-gradient(135deg, var(--accent2), #1e40af); padding: 16px 40px; border-radius: 14px; border: none; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 900; cursor: pointer; }
+.level-up-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 999;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.level-up-modal.active {
+  display: flex;
+  animation: fadeIn 0.3s ease;
+}
+
+.lu-icon {
+  font-size: 100px;
+  line-height: 1;
+  margin-bottom: 20px;
+  animation: popScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: drop-shadow(0 0 30px rgba(245,158,11,0.6));
+}
+
+.lu-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 28px;
+  color: var(--gold);
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.lu-sub {
+  font-size: 16px;
+  color: var(--text);
+  margin-bottom: 30px;
+  font-weight: 600;
+}
+
+.lu-rewards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.lu-rew-box {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 24px;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.lu-rew-box.c {
+  color: var(--coin);
+  border-color: rgba(239,68,68,.3);
+  box-shadow: 0 0 20px rgba(239,68,68,.15);
+}
+
+.lu-rew-box.t {
+  color: var(--ticket);
+  border-color: rgba(16,185,129,.3);
+  box-shadow: 0 0 20px rgba(16,185,129,.15);
+}
+
+.lu-btn {
+  background: linear-gradient(135deg, var(--accent2), #1e40af);
+  padding: 16px 40px;
+  border-radius: 14px;
+  border: none;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
 
 <div class="header">
   <div class="hbtn">✕</div>
-  <div class="header-title">♟ CHESS &amp; CHECKERS 3D</div>
+  <div class="header-title">♟ CHESS &amp; CHECKERS</div>
   <div class="hbtn">⋮</div>
 </div>
 
@@ -876,7 +1268,7 @@ body::before {
     <div class="mcard local" onclick="startPassPlay()">
       <div class="micon">👥</div>
       <div class="mname">Pass &amp; Play</div>
-      <div class="mdesc">Native 3D Tabletop</div>
+      <div class="mdesc">Tabletop Mode</div>
     </div>
     <div class="mcard ai" onclick="startVsAI()">
       <div class="micon">🤖</div>
@@ -1059,7 +1451,7 @@ function normalizeState() {
 
 function loadState() {
   return new Promise(resolve => {
-    let raw = localStorage.getItem('cc_state_v12'); // Incremented again just in case
+    let raw = localStorage.getItem('cc_state_v14'); // clean version
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
@@ -1076,7 +1468,7 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem('cc_state_v12', JSON.stringify(appState));
+  localStorage.setItem('cc_state_v14', JSON.stringify(appState));
   updateUI();
 }
 
@@ -1655,9 +2047,8 @@ function makeChkAIMove() {
 }
 
 // =========================================
-// CSS 3D ENGINE (TABLETOP & TILT)
+// RENDERING BOARDS (CLEAN 2D)
 // =========================================
-
 function getBoardColors() {
   try {
     const eqBoard = appState && appState.equipped ? appState.equipped.board : 'classic_board';
@@ -1692,13 +2083,6 @@ function renderChessBoard() {
   const cols = getBoardColors();
   const pTheme = getPieceTheme();
 
-  // Determine if Tabletop is active
-  if (gameMode === 'pass') {
-      wrapWrapper.classList.add('tabletop-mode');
-  } else {
-      wrapWrapper.classList.remove('tabletop-mode');
-  }
-
   chessGame.board().forEach((row, rIdx) => {
     row.forEach((cell, cIdx) => {
       const sq = document.createElement('div');
@@ -1718,9 +2102,9 @@ function renderChessBoard() {
       if (cell) {
         const pEl = document.createElement('span');
         
-        // Mark black pieces for tabletop rotation
-        if (cell.color === 'b') {
-            pEl.classList.add('black-piece');
+        // Pass & Play Tabletop rotation for Black pieces (Pure 2D)
+        if (gameMode === 'pass' && cell.color === 'b') {
+            pEl.classList.add('rotated-piece');
         }
 
         const pieces = { 'p':'♟', 'r':'♜', 'n':'♞', 'b':'♝', 'q':'♛', 'k':'♚', 'P':'♙', 'R':'♖', 'N':'♘', 'B':'♗', 'Q':'♕', 'K':'♔' };
@@ -1731,9 +2115,10 @@ function renderChessBoard() {
           pEl.style.textShadow = cell.color === 'w' ? "0 2px 10px rgba(245,158,11,0.4)" : "none";
         } else {
           pEl.style.color = cell.color === 'w' ? '#ffffff' : '#000000';
+          // Clean 2D text shadow
+          if (cell.color === 'w') pEl.style.textShadow = "0 2px 4px rgba(0,0,0,0.5)";
         }
         
-        pEl.style.zIndex = "3";
         sq.appendChild(pEl);
       }
       
@@ -1797,11 +2182,9 @@ function renderChessBoard() {
           }
         }
       };
-      
       boardEl.appendChild(sq);
     });
   });
-  
   wrapWrapper.appendChild(boardEl);
 }
 
@@ -1814,13 +2197,6 @@ function renderCheckersBoard() {
   boardEl.className = 'fs-board';
   
   const turn = chkGame.turn;
-
-  if (gameMode === 'pass') {
-      wrapWrapper.classList.add('tabletop-mode');
-  } else {
-      wrapWrapper.classList.remove('tabletop-mode');
-  }
-
   const aMoves = chkGame.getMoves(turn, chkGame.multiJumpSq);
   const isM = aMoves.length > 0 && aMoves[0].jump;
   const mFroms = isM ? aMoves.map(m => m.from.r + ',' + m.from.c) : [];
@@ -1848,10 +2224,13 @@ function renderCheckersBoard() {
       
       if (pVal !== 0) {
         const pEl = document.createElement('div');
-        pEl.className = 'chk-piece';
         
-        if (pVal < 0) {
-            pEl.classList.add('chk-black');
+        // Clean 2D styling for checkers piece
+        pEl.style.cssText = `width:75%;height:75%;border-radius:50%;box-shadow:0 4px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:24px;z-index:3;`;
+        
+        // Tabletop Mode rotation for Black pieces
+        if (gameMode === 'pass' && pVal < 0) {
+           pEl.classList.add('rotated-piece');
         }
         
         if (pTheme === 'gold') {
@@ -1863,10 +2242,7 @@ function renderCheckersBoard() {
         }
         
         if (Math.abs(pVal) === 2) pEl.innerHTML = '👑';
-        
-        if (pVal === turn && mFroms.includes(r + ',' + c)) {
-            pEl.classList.add('mandatory-piece');
-        }
+        if (pVal === turn && mFroms.includes(r + ',' + c)) pEl.classList.add('mandatory-piece');
         
         sq.appendChild(pEl);
       }
@@ -1930,11 +2306,9 @@ function renderCheckersBoard() {
           }
         }
       };
-      
       boardEl.appendChild(sq);
     }
   }
-  
   wrapWrapper.appendChild(boardEl);
 }
 
@@ -2159,7 +2533,6 @@ function startPassPlay() {
   clearAiTimers(); 
   isAITurn = false;
   
-  // Tabletop UI Design with CSS 3D wrapper
   openModal(`
     <div style="display:flex; flex-direction:column; height:100%; width:100%; align-items:center; justify-content:space-between; padding: 10px 0;">
        
@@ -2168,9 +2541,7 @@ function startPassPlay() {
            <div id="pp-b-status" style="font-size:12px; font-weight:700;">Waiting...</div>
        </div>
        
-       <div class="board-3d-wrapper">
-           <div class="fs-board-wrap" id="inner-board-wrap"></div>
-       </div>
+       <div class="fs-board-wrap" id="inner-board-wrap" style="margin: 15px 0;"></div>
        
        <div id="pp-white-area" style="width:100%; max-width:400px; text-align:center; padding:12px; background:var(--s2); border-radius:12px; border:2px solid var(--border);">
            <div style="font-family:'Orbitron'; font-size:16px; font-weight:900; color:var(--text);">Player 1 (White)</div>
@@ -2191,7 +2562,6 @@ function startPassPlay() {
     chkSelectedSq = null; 
   }
   
-  // Safely render after DOM updates
   setTimeout(() => {
       if(curGame === 'chess') renderChessBoard();
       else renderCheckersBoard();
@@ -2242,11 +2612,7 @@ window.selTime = function(mins) {
         <div class="timer-box" id="ai-timer">${fTime(aiTimeSec)}</div>
       </div>
       <div id="turn-banner" class="turn-banner">Turn</div>
-      
-      <div class="board-3d-wrapper">
-          <div class="fs-board-wrap" id="inner-board-wrap"></div>
-      </div>
-      
+      <div class="fs-board-wrap" id="inner-board-wrap"></div>
       <div class="game-footer">
         <div>👤 You</div>
         <div class="timer-box active" id="user-timer">${fTime(userTimeSec)}</div>
@@ -2290,6 +2656,7 @@ window.selTime = function(mins) {
   }, 10);
   
   gameTimerInterval = setInterval(tickTimer, 1000);
+  
   document.getElementById('chat-log').innerHTML = `<div class="bubble opp">Good luck! ♟</div>`;
 };
 
@@ -2311,7 +2678,7 @@ function scOppReply() {
 }
 
 // =========================================
-// PUZZLES ENGINE
+// PUZZLES ENGINE 
 // =========================================
 function normSan(san) { 
   return (san || '').replace(/[+#]$/, '').trim(); 
@@ -2349,11 +2716,7 @@ function startPuzzleMode() {
       </div>
       
       <div id="turn-banner" class="turn-banner">Turn</div>
-      
-      <div class="board-3d-wrapper">
-          <div class="fs-board-wrap" id="inner-board-wrap"></div>
-      </div>
-      
+      <div class="fs-board-wrap" id="inner-board-wrap"></div>
       <div id="puzzle-msg" class="puzzle-msg" style="margin-top:12px;"></div>
       
       <div style="display:flex;gap:10px;width:100%;max-width:400px;margin:15px auto 0;">
