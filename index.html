@@ -641,7 +641,7 @@ body::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start; /* Changed to flex-start for proper tabletop scrolling */
   align-items: center;
   padding: 16px;
   gap: 12px;
@@ -649,7 +649,7 @@ body::before {
 }
 
 /* =========================================
-   BOARD LOGIC & AUTO-FLIPPING
+   BOARD LOGIC
    ========================================= */
 .fs-board-wrap {
   width: 100%;
@@ -659,7 +659,7 @@ body::before {
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 4px 25px rgba(0,0,0,0.5);
-  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+  /* Removed flip transition because the board stays static in tabletop */
 }
 
 .fs-board-wrap::before {
@@ -692,26 +692,6 @@ body::before {
 
 @media (min-width: 430px) {
   .fs-sq { font-size: 38px; }
-}
-
-/* PASS & PLAY AUTO-FLIP CLASSES */
-/* This spins the board container entirely 180 degrees */
-.board-flipped {
-  transform: rotate(180deg);
-}
-
-/* This counter-rotates the pieces back to upright so they aren't upside down */
-.board-flipped .fs-sq > span,
-.board-flipped .fs-sq > div.move-cap,
-.board-flipped .fs-sq > div.move-dot {
-  transform: rotate(-180deg);
-  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
-}
-
-/* Ensure default spans are animated smoothly too */
-.fs-sq > span {
-  display: inline-block;
-  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .last-move::before {
@@ -763,6 +743,8 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .game-header, .game-footer {
@@ -942,6 +924,8 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .diff-title {
@@ -1049,9 +1033,18 @@ body::before {
 /* =========================================
    PUZZLES
    ========================================= */
-.puzzle-card {
+.puzzle-wrap {
   width: 100%;
   max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.puzzle-card {
+  width: 100%;
   background: linear-gradient(135deg, var(--s2), rgba(19,31,53,.5));
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1059,7 +1052,6 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
 }
 
 .puzzle-title {
@@ -1080,7 +1072,6 @@ body::before {
 
 .puzzle-msg {
   width: 100%;
-  max-width: 400px;
   border-radius: 12px;
   padding: 10px;
   border: 1px solid var(--border);
@@ -1088,7 +1079,6 @@ body::before {
   display: none;
   font-weight: 700;
   text-align: center;
-  margin-top: 12px;
 }
 
 .puzzle-msg.ok {
@@ -1271,7 +1261,7 @@ body::before {
     <div class="mcard local" onclick="startPassPlay()">
       <div class="micon">👥</div>
       <div class="mname">Pass &amp; Play</div>
-      <div class="mdesc">Local PvP (Auto-flips)</div>
+      <div class="mdesc">Tabletop Human vs Human</div>
     </div>
     <div class="mcard ai" onclick="startVsAI()">
       <div class="micon">🤖</div>
@@ -1454,7 +1444,7 @@ function normalizeState() {
 
 function loadState() {
   return new Promise(res => {
-    let raw = localStorage.getItem('cc_state_v8'); // Incremented to wipe out bad data
+    let raw = localStorage.getItem('cc_state_v9'); // Incremented again just in case
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
@@ -1471,7 +1461,7 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem('cc_state_v8', JSON.stringify(appState));
+  localStorage.setItem('cc_state_v9', JSON.stringify(appState));
   updateUI();
 }
 
@@ -1497,7 +1487,6 @@ function addRating(g, amt) {
   const newR = appState.stats[g].rating;
   const newL = getLeagueByRating(newR);
   
-  // Checking if player hit a new threshold
   if (newL.id > oldL.id) {
     appState.coins += newL.rCoin;
     appState.tickets += newL.rTick;
@@ -2026,7 +2015,7 @@ function makeChkAIMove() {
 }
 
 // =========================================
-// RENDERING BOARDS & AUTO-FLIP
+// RENDERING BOARDS & TABLETOP MODE
 // =========================================
 function getBoardColors() {
   try {
@@ -2058,14 +2047,6 @@ function renderChessBoard() {
   
   const turn = chessGame.turn(); 
   
-  // PASS & PLAY AUTO-FLIP MAGIC
-  // We rotate the entire board container if it's black's turn.
-  if (gameMode === 'pass' && turn === 'b') {
-    wrap.classList.add('board-flipped');
-  } else {
-    wrap.classList.remove('board-flipped');
-  }
-  
   const vMoves = chessSelectedSq ? chessGame.moves({ square: chessSelectedSq, verbose: true }) : [];
   const vTargs = vMoves.map(m => m.to);
   const cols = getBoardColors();
@@ -2089,6 +2070,17 @@ function renderChessBoard() {
       
       if (cell) {
         const pEl = document.createElement('span');
+        
+        // --- TABLETOP MODE MAGIC ---
+        pEl.style.display = 'inline-block';
+        pEl.style.transition = 'transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)';
+        
+        // In Pass & Play, all Black pieces are permanently rotated 180 degrees 
+        // so the player sitting across the phone sees them upright!
+        if (gameMode === 'pass' && cell.color === 'b') {
+            pEl.style.transform = 'rotate(180deg)';
+        }
+
         const pieces = { 'p':'♟', 'r':'♜', 'n':'♞', 'b':'♝', 'q':'♛', 'k':'♚', 'P':'♙', 'R':'♖', 'N':'♘', 'B':'♗', 'Q':'♕', 'K':'♔' };
         pEl.textContent = pieces[cell.color === 'w' ? cell.type.toUpperCase() : cell.type];
         
@@ -2137,7 +2129,6 @@ function renderChessBoard() {
             globalLastMove = { from: mObj.from, to: mObj.to };
             chessSelectedSq = null;
             
-            // This triggers the CSS rotation flip
             renderChessBoard();
 
             if (gameMode === 'puzzle') {
@@ -2147,7 +2138,7 @@ function renderChessBoard() {
             if (gameMode === 'pass') {
               renderTurnBanner(); 
               checkGameOver(chessGame, 'chess');
-              return; // DO NOT CALL AI
+              return; 
             }
             
             if (gameMode === 'ai') {
@@ -2180,13 +2171,6 @@ function renderCheckersBoard() {
   boardEl.className = 'fs-board';
   
   const turn = chkGame.turn;
-  
-  // PASS & PLAY AUTO-FLIP MAGIC
-  if (gameMode === 'pass' && turn === -1) {
-    wrap.classList.add('board-flipped');
-  } else {
-    wrap.classList.remove('board-flipped');
-  }
 
   const aMoves = chkGame.getMoves(turn, chkGame.multiJumpSq);
   const isM = aMoves.length > 0 && aMoves[0].jump;
@@ -2215,6 +2199,11 @@ function renderCheckersBoard() {
       if (pVal !== 0) {
         const pEl = document.createElement('div');
         pEl.style.cssText = `width:75%;height:75%;border-radius:50%;box-shadow:0 4px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:24px;z-index:3; transition:transform 0.4s;`;
+        
+        // TABLETOP MODE MAGIC for Checkers
+        if (gameMode === 'pass' && pVal < 0) {
+           pEl.style.transform = 'rotate(180deg)';
+        }
         
         if (pTheme === 'gold') {
           pEl.style.background = pVal > 0 ? '#fbbf24' : '#0b1220';
@@ -2258,7 +2247,6 @@ function renderCheckersBoard() {
             globalLastMove = { kind: 'checkers', from: mv.from, to: mv.to }; 
             chkSelectedSq = null;
             
-            // Triggers Auto-Flip
             renderCheckersBoard();
             
             if (gameMode === 'puzzle') {
@@ -2268,7 +2256,7 @@ function renderCheckersBoard() {
             if (gameMode === 'pass') {
               renderTurnBanner(); 
               checkGameOver(chkGame, 'checkers'); 
-              return; // DO NOT CALL AI
+              return; 
             }
             
             if (gameMode === 'ai') {
@@ -2297,16 +2285,36 @@ function renderCheckersBoard() {
 }
 
 function renderTurnBanner() {
-  const b = document.getElementById('turn-banner');
-  if (!b) return;
   const isW = curGame === 'chess' ? chessGame.turn() === 'w' : chkGame.turn === 1;
   
   if (gameMode === 'pass') {
-     b.textContent = isW ? "White's Turn (Pass device)" : "Black's Turn (Pass device)";
-  } else {
-     b.textContent = isW ? "White's Turn" : "Black's Turn";
+      const wArea = document.getElementById('pp-white-area');
+      const bArea = document.getElementById('pp-black-area');
+      const wStat = document.getElementById('pp-w-status');
+      const bStat = document.getElementById('pp-b-status');
+      
+      if(wArea && bArea) {
+          if(isW) {
+              wArea.style.opacity = '1'; wArea.style.borderColor = 'var(--green)'; 
+              wStat.innerText = 'Your Turn!'; wStat.style.color = 'var(--green)';
+              
+              bArea.style.opacity = '0.5'; bArea.style.borderColor = 'var(--border)'; 
+              bStat.innerText = 'Waiting...'; bStat.style.color = 'var(--muted)';
+          } else {
+              bArea.style.opacity = '1'; bArea.style.borderColor = 'var(--green)'; 
+              bStat.innerText = 'Your Turn!'; bStat.style.color = 'var(--green)';
+              
+              wArea.style.opacity = '0.5'; wArea.style.borderColor = 'var(--border)'; 
+              wStat.innerText = 'Waiting...'; wStat.style.color = 'var(--muted)';
+          }
+      }
+      return;
   }
+
+  const b = document.getElementById('turn-banner');
+  if (!b) return;
   
+  b.textContent = isW ? "White's Turn" : "Black's Turn";
   b.className = `turn-banner ${isW ? 'white' : 'black'}`;
 }
 
@@ -2384,32 +2392,14 @@ function checkGameOver(g, type, toLoser = null) {
         const w = g.turn() === 'b' ? 'White' : 'Black';
         t = "🏆 Checkmate!";
         if (gameMode === 'ai') {
-          if (w === 'White') { 
-            sub = "You beat AI!"; pReward = 20; 
-          } else { 
-            sub = "AI beat you."; pReward = -10; t = "💀 Defeat"; 
-          }
-        } else { 
-          sub = `${w} wins!`; 
-        }
-      } else { 
-        t = "🤝 Draw"; sub = "Game ended in a draw."; 
-      }
+          if (w === 'White') { sub = "You beat AI!"; pReward = 20; } else { sub = "AI beat you."; pReward = -10; t = "💀 Defeat"; }
+        } else { sub = `${w} wins!`; }
+      } else { t = "🤝 Draw"; sub = "Game ended in a draw."; }
     } else {
-      const wM = g.getMoves(1).length; 
-      const bM = g.getMoves(-1).length;
-      
-      if (wM === 0) { 
-        t = gameMode === 'ai' ? "💀 Defeat" : "🏆 Black Wins!"; 
-        sub = gameMode === 'ai' ? "No moves left." : "White has no moves."; 
-        if (gameMode === 'ai') pReward = -10; 
-      } else if (bM === 0) { 
-        t = gameMode === 'ai' ? "🏆 Victory!" : "🏆 White Wins!"; 
-        sub = gameMode === 'ai' ? "You beat AI!" : "Black has no moves."; 
-        if (gameMode === 'ai') pReward = 20; 
-      } else { 
-        t = "🤝 Draw"; sub = "Game ended."; 
-      }
+      const wM = g.getMoves(1).length; const bM = g.getMoves(-1).length;
+      if (wM === 0) { t = gameMode === 'ai' ? "💀 Defeat" : "🏆 Black Wins!"; sub = gameMode === 'ai' ? "No moves left." : "White has no moves."; if (gameMode === 'ai') pReward = -10; } 
+      else if (bM === 0) { t = gameMode === 'ai' ? "🏆 Victory!" : "🏆 White Wins!"; sub = gameMode === 'ai' ? "You beat AI!" : "Black has no moves."; if (gameMode === 'ai') pReward = 20; } 
+      else { t = "🤝 Draw"; sub = "Game ended."; }
     }
   }
   
@@ -2425,11 +2415,7 @@ function checkGameOver(g, type, toLoser = null) {
   
   const overlay = document.createElement('div'); 
   overlay.className = 'end-overlay';
-  overlay.innerHTML = `
-    <div class="end-title" style="color:var(--gold)">${t}</div>
-    <div class="end-sub">${sub} ${gameMode === 'ai' && pReward !== 0 ? `<br><span style="color:var(--rating)">${pReward > 0 ? '+' : ''}${pReward} 👑</span>` : ''}</div>
-    <button class="end-btn" onclick="gameMode === 'ai' ? startVsAI() : startPassPlay()">Play Again</button>
-  `;
+  overlay.innerHTML = `<div class="end-title" style="color:var(--gold)">${t}</div><div class="end-sub">${sub} ${gameMode === 'ai' && pReward !== 0 ? `<br><span style="color:var(--rating)">${pReward > 0 ? '+' : ''}${pReward} 👑</span>` : ''}</div><button class="end-btn" onclick="gameMode === 'ai' ? startVsAI() : startPassPlay()">Play Again</button>`;
   wrap.appendChild(overlay);
 }
 
@@ -2467,17 +2453,22 @@ function startPassPlay() {
   clearAiTimers(); 
   isAITurn = false;
   
+  // Tabletop UI Design
   openModal(`
-    <div class="game-header">
-      <div>♟ Local PvP</div>
-      <div style="color:var(--muted);font-size:12px">Pass device to play</div>
-    </div>
-    <div id="turn-banner" class="turn-banner">Turn</div>
-    <div class="fs-board-wrap" id="inner-board-wrap"></div>
-    <div class="game-footer">
-      <div style="font-size:12px; color:var(--muted); text-align:center; width:100%;">
-        The board automatically flips 180° after each move.
-      </div>
+    <div style="display:flex; flex-direction:column; height:100%; width:100%; align-items:center; justify-content:space-between; padding: 10px 0;">
+       <div id="pp-black-area" style="transform: rotate(180deg); width:100%; max-width:400px; text-align:center; padding:12px; background:var(--s2); border-radius:12px; border:2px solid var(--border);">
+           <div style="font-family:'Orbitron'; font-size:16px; font-weight:900; color:var(--text);">Player 2 (Black)</div>
+           <div id="pp-b-status" style="font-size:12px; font-weight:700;">Waiting...</div>
+       </div>
+       
+       <div class="fs-board-wrap" id="inner-board-wrap" style="margin: 15px 0;"></div>
+       
+       <div id="pp-white-area" style="width:100%; max-width:400px; text-align:center; padding:12px; background:var(--s2); border-radius:12px; border:2px solid var(--border);">
+           <div style="font-family:'Orbitron'; font-size:16px; font-weight:900; color:var(--text);">Player 1 (White)</div>
+           <div id="pp-w-status" style="font-size:12px; font-weight:700;">Your Turn!</div>
+       </div>
+       
+       <button style="margin-top:15px; padding:10px; border-radius:10px; background:var(--s3); color:var(--muted); border:1px solid var(--border); width:100px; font-weight:700;" onclick="closeModal()">End Game</button>
     </div>
   `);
   
@@ -2600,7 +2591,7 @@ function scOppReply() {
 }
 
 // =========================================
-// PUZZLES ENGINE (FIXED LOAD SEQUENCE)
+// PUZZLES ENGINE (FIXED BLANK BUG)
 // =========================================
 function normSan(san) { 
   return (san || '').replace(/[+#]$/, '').trim(); 
@@ -2629,28 +2620,35 @@ function startPuzzleMode() {
   
   // Set inner HTML synchronously first
   openModal(`
-    <div class="puzzle-card">
-      <div>
-        <div class="puzzle-title" id="puz-label">🧩 tactics</div>
-        <div class="puzzle-sub" style="color:var(--muted); font-size:11px;">Solve for Rating points</div>
+    <div class="puzzle-wrap">
+      <div class="puzzle-card">
+        <div>
+          <div class="puzzle-title" id="puz-label">🧩 tactics</div>
+          <div class="puzzle-sub" style="color:var(--muted); font-size:11px;">Solve for Rating points</div>
+        </div>
+        <div class="puzzle-reward" id="puz-reward">+15 👑</div>
       </div>
-      <div class="puzzle-reward" id="puz-reward">+15 👑</div>
-    </div>
-    
-    <div id="turn-banner" class="turn-banner">Turn</div>
-    
-    <div class="fs-board-wrap" id="inner-board-wrap"></div>
-    
-    <div id="puzzle-msg" class="puzzle-msg" style="margin-top:12px;"></div>
-    
-    <div style="display:flex;gap:10px;width:100%;max-width:400px;margin:15px auto 0;">
-       <button class="pbtn" onclick="closeModal()">Close</button>
-       <button class="pbtn primary" onclick="loadPuzzle(null)">Skip & Next</button>
+      
+      <div id="turn-banner" class="turn-banner">Turn</div>
+      
+      <div class="fs-board-wrap" id="inner-board-wrap"></div>
+      
+      <div id="puzzle-msg" class="puzzle-msg" style="margin-top:12px;"></div>
+      
+      <div style="display:flex;gap:10px;width:100%;max-width:400px;margin:15px auto 0;">
+         <button class="pbtn" onclick="closeModal()">Close</button>
+         <button class="pbtn primary" onclick="loadPuzzle(null)">Skip & Next</button>
+      </div>
     </div>
   `);
   
+  // Safely get current ID
+  let currentId = 1;
+  if (appState && appState.puzzles) {
+      currentId = curGame === 'chess' ? (appState.puzzles.chessLast || 1) : (appState.puzzles.checkersLast || 1);
+  }
+  
   // THEN initialize engine and draw
-  const currentId = curGame === 'chess' ? (appState.puzzles.chessLast || 1) : (appState.puzzles.checkersLast || 1);
   loadPuzzle(currentId);
 }
 
@@ -2661,9 +2659,13 @@ function loadPuzzle(idRequested = null) {
   let dbCount = curGame === 'chess' ? CHESS_PUZZLES_DB.length : CHECKERS_PUZZLES_DB.length;
   
   let id = parseInt(idRequested);
-  if (!id || isNaN(id)) {
-     const last = curGame === 'chess' ? (appState.puzzles.chessLast || 1) : (appState.puzzles.checkersLast || 1);
-     id = last + 1;
+  if (isNaN(id) || id < 1) {
+     if (appState && appState.puzzles) {
+         const last = curGame === 'chess' ? (appState.puzzles.chessLast || 1) : (appState.puzzles.checkersLast || 1);
+         id = last + 1;
+     } else {
+         id = 1;
+     }
   }
   
   let dbIndex = (id - 1) % dbCount;
@@ -2675,15 +2677,23 @@ function loadPuzzle(idRequested = null) {
   if (curGame === 'chess') {
     const pData = CHESS_PUZZLES_DB[dbIndex];
     
+    try {
+        chessGame = new Chess(pData.fen);
+    } catch(e) {
+        console.error("Invalid puzzle FEN:", pData.fen);
+        chessGame = new Chess(); // Fallback
+    }
+    
     puzzleCtx = { id, moves: pData.moves, step: 0, fen: pData.fen, reward: pData.moves.length * 15 };
-    chessGame = new Chess(pData.fen);
     puzzleCtx.playerTurn = chessGame.turn(); 
     
     document.getElementById('puz-label').innerText = `#${id} Chess · ${pData.label}`;
     document.getElementById('puz-reward').innerText = `+${puzzleCtx.reward} 👑`;
     
-    appState.puzzles.chessLast = id; 
-    saveState();
+    if (appState && appState.puzzles) {
+        appState.puzzles.chessLast = id; 
+        saveState();
+    }
     
     renderChessBoard(); 
     renderTurnBanner();
@@ -2700,8 +2710,10 @@ function loadPuzzle(idRequested = null) {
     document.getElementById('puz-label').innerText = `#${id} Checkers · ${pData.label}`;
     document.getElementById('puz-reward').innerText = `+${puzzleCtx.reward} 👑`;
     
-    appState.puzzles.checkersLast = id; 
-    saveState();
+    if (appState && appState.puzzles) {
+        appState.puzzles.checkersLast = id; 
+        saveState();
+    }
     
     renderCheckersBoard(); 
     renderTurnBanner();
@@ -2754,7 +2766,7 @@ function onPuzzleMove(evtData) {
       msgDiv.innerText = `Wrong! Board resetting...`;
       
       setTimeout(() => {
-        chessGame = new Chess(puzzleCtx.fen); 
+        try { chessGame = new Chess(puzzleCtx.fen); } catch(e) {}
         puzzleCtx.step = 0; 
         chessSelectedSq = null; 
         globalLastMove = null;
